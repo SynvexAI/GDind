@@ -4,6 +4,7 @@ __pycache__/
 
 # Log files
 gdind_log.txt
+geometrydashai_v2_log.txt
 
 # Virtual environments
 venv/
