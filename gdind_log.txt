@@ -1,0 +1,28 @@
+2025-05-25 18:05:24,412 - INFO - geometry_dash_ai.py:32 - Logging setup complete. Log level: INFO
+2025-05-25 18:05:24,413 - INFO - geometry_dash_ai.py:33 - Using device: cuda
+2025-05-25 18:05:24,413 - INFO - geometry_dash_ai.py:465 - Starting GDind AI...
+2025-05-25 18:05:24,413 - INFO - geometry_dash_ai.py:466 - Ensure the Geometry Dash window is active and visible in the specified region.
+2025-05-25 18:05:24,413 - INFO - geometry_dash_ai.py:467 - Press Ctrl+C in the console to stop.
+2025-05-25 18:05:27,411 - INFO - geometry_dash_ai.py:478 - Starting in 3...
+2025-05-25 18:05:28,413 - INFO - geometry_dash_ai.py:478 - Starting in 2...
+2025-05-25 18:05:29,414 - INFO - geometry_dash_ai.py:478 - Starting in 1...
+2025-05-25 18:05:30,415 - INFO - geometry_dash_ai.py:94 - GameEnvironment initialized. Screen region: {'left': 0, 'top': 0, 'width': 1920, 'height': 1080}
+2025-05-25 18:05:30,415 - WARNING - geometry_dash_ai.py:105 - Game over template not found or path not specified: game_over_template.png. Death detection will be basic.
+2025-05-25 18:05:30,561 - INFO - geometry_dash_ai.py:77 - DQN model initialized. Input: (4, 96, 96), Output: 2, Linear input size: 4096
+2025-05-25 18:05:30,572 - INFO - geometry_dash_ai.py:77 - DQN model initialized. Input: (4, 96, 96), Output: 2, Linear input size: 4096
+2025-05-25 18:05:31,771 - INFO - geometry_dash_ai.py:44 - ReplayMemory initialized with capacity: 20000
+2025-05-25 18:05:31,771 - INFO - geometry_dash_ai.py:312 - Agent initialized.
+2025-05-25 18:05:31,772 - INFO - geometry_dash_ai.py:313 - Policy Net: DQN(
+  (conv1): Conv2d(4, 32, kernel_size=(8, 8), stride=(4, 4))
+  (bn1): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (conv2): Conv2d(32, 64, kernel_size=(4, 4), stride=(2, 2))
+  (bn2): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (conv3): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1))
+  (bn3): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (fc1): Linear(in_features=4096, out_features=512, bias=True)
+  (head): Linear(in_features=512, out_features=2, bias=True)
+)
+2025-05-25 18:05:31,772 - WARNING - geometry_dash_ai.py:392 - Model file not found at gdind_model.pth. Starting with a new model.
+2025-05-25 18:05:31,796 - INFO - geometry_dash_ai.py:502 - --- Episode 1/5000 --- Epsilon: 1.0000
+2025-05-25 18:07:31,479 - INFO - geometry_dash_ai.py:544 - Episode 1 finished. Steps: 1000, Reward: 100.00, Avg Loss: 0.016020065173506737
+2025-05-25 18:07:31,507 - INFO - geometry_dash_ai.py:502 - --- Episode 2/5000 --- Epsilon: 0.9675
