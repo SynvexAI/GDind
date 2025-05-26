@@ -1,20 +1,22 @@
-2025-05-25 18:19:43,546 - INFO - geometry_dash_ai.py:51 - Logging setup complete. Log level: INFO
-2025-05-25 18:19:43,547 - INFO - geometry_dash_ai.py:52 - Using device: cuda
-2025-05-25 18:19:43,547 - INFO - geometry_dash_ai.py:737 - Main thread started. PID: 23516
-2025-05-25 18:19:43,547 - INFO - geometry_dash_ai.py:741 - Game starting in 3...
-2025-05-25 18:19:44,548 - INFO - geometry_dash_ai.py:741 - Game starting in 2...
-2025-05-25 18:19:45,549 - INFO - geometry_dash_ai.py:741 - Game starting in 1...
-2025-05-25 18:19:46,618 - INFO - geometry_dash_ai.py:749 - GUI thread started.
-2025-05-25 18:19:47,619 - INFO - geometry_dash_ai.py:617 - Starting GDint AI Training Loop...
-2025-05-25 18:19:47,640 - INFO - geometry_dash_ai.py:164 - Found window: Geometry Dash
-2025-05-25 18:19:47,642 - INFO - geometry_dash_ai.py:178 - Focused window 'Geometry Dash' using pywinauto.
-2025-05-25 18:19:48,143 - INFO - geometry_dash_ai.py:123 - GameEnvironment initialized. Screen region: {'top': 122, 'left': 938, 'width': 970, 'height': 576, 'monitor': 1}
-2025-05-25 18:19:48,143 - WARNING - geometry_dash_ai.py:140 - Game Over template not found or path not specified: game_over_template.png. Related detection will be disabled.
-2025-05-25 18:19:48,143 - WARNING - geometry_dash_ai.py:140 - Player Icon template not found or path not specified: player_icon_template.png. Related detection will be disabled.
-2025-05-25 18:19:48,270 - INFO - geometry_dash_ai.py:101 - DQN model initialized. Input: (1, 96, 96), Output: 2
-2025-05-25 18:19:48,282 - INFO - geometry_dash_ai.py:101 - DQN model initialized. Input: (4, 96, 96), Output: 2
-2025-05-25 18:19:48,293 - INFO - geometry_dash_ai.py:101 - DQN model initialized. Input: (4, 96, 96), Output: 2
-2025-05-25 18:19:49,467 - INFO - geometry_dash_ai.py:78 - ReplayMemory initialized with capacity: 30000
-2025-05-25 18:19:49,468 - INFO - geometry_dash_ai.py:397 - Agent initialized.
-2025-05-25 18:19:49,468 - WARNING - geometry_dash_ai.py:468 - Model file not found at gdint_model.pth. Starting with a new model.
-2025-05-25 18:19:49,480 - INFO - geometry_dash_ai.py:651 - --- Episode 1/5000 --- Epsilon: 1.0000
+2025-05-26 17:30:51,617 - INFO - geometry_dash_ai.py:51 - Logging setup complete. Log level: INFO
+2025-05-26 17:30:51,617 - INFO - geometry_dash_ai.py:52 - Using device: cuda
+2025-05-26 17:30:51,618 - INFO - geometry_dash_ai.py:737 - Main thread started. PID: 4676
+2025-05-26 17:30:51,618 - INFO - geometry_dash_ai.py:741 - Game starting in 3...
+2025-05-26 17:30:52,619 - INFO - geometry_dash_ai.py:741 - Game starting in 2...
+2025-05-26 17:30:53,620 - INFO - geometry_dash_ai.py:741 - Game starting in 1...
+2025-05-26 17:30:54,669 - INFO - geometry_dash_ai.py:749 - GUI thread started.
+2025-05-26 17:30:55,670 - INFO - geometry_dash_ai.py:617 - Starting GDint AI Training Loop...
+2025-05-26 17:30:55,675 - INFO - geometry_dash_ai.py:164 - Found window: Geometry Dash
+2025-05-26 17:30:55,677 - INFO - geometry_dash_ai.py:178 - Focused window 'Geometry Dash' using pywinauto.
+2025-05-26 17:30:56,178 - INFO - geometry_dash_ai.py:123 - GameEnvironment initialized. Screen region: {'top': 142, 'left': 739, 'width': 1059, 'height': 626, 'monitor': 1}
+2025-05-26 17:30:56,178 - WARNING - geometry_dash_ai.py:140 - Game Over template not found or path not specified: game_over_template.png. Related detection will be disabled.
+2025-05-26 17:30:56,178 - WARNING - geometry_dash_ai.py:140 - Player Icon template not found or path not specified: player_icon_template.png. Related detection will be disabled.
+2025-05-26 17:30:56,301 - INFO - geometry_dash_ai.py:101 - DQN model initialized. Input: (1, 96, 96), Output: 2
+2025-05-26 17:30:56,312 - INFO - geometry_dash_ai.py:101 - DQN model initialized. Input: (4, 96, 96), Output: 2
+2025-05-26 17:30:56,324 - INFO - geometry_dash_ai.py:101 - DQN model initialized. Input: (4, 96, 96), Output: 2
+2025-05-26 17:30:57,556 - INFO - geometry_dash_ai.py:78 - ReplayMemory initialized with capacity: 30000
+2025-05-26 17:30:57,557 - INFO - geometry_dash_ai.py:397 - Agent initialized.
+2025-05-26 17:30:57,557 - WARNING - geometry_dash_ai.py:468 - Model file not found at gdint_model.pth. Starting with a new model.
+2025-05-26 17:30:57,568 - INFO - geometry_dash_ai.py:651 - --- Episode 1/5000 --- Epsilon: 1.0000
+2025-05-26 17:33:32,115 - INFO - geometry_dash_ai.py:705 - Episode 1 finished. Steps: 1500, Reward: 150.00, Avg Loss: N/A
+2025-05-26 17:33:32,127 - INFO - geometry_dash_ai.py:651 - --- Episode 2/5000 --- Epsilon: 0.9707
