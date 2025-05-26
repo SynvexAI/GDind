@@ -1,13 +1,13 @@
-2025-05-26 17:45:18,002 - INFO - geometry_dash_ai:59 - Logging for GDint setup. Level: INFO, Device: cuda
-2025-05-26 17:45:18,003 - INFO - geometry_dash_ai:837 - --- GDint AI Starting --- PID: 22828
-2025-05-26 17:45:18,012 - INFO - geometry_dash_ai:842 - Keyboard listener started for 'p' key.
-2025-05-26 17:45:18,012 - INFO - geometry_dash_ai:845 - Focus game window... Starting in 2s
-2025-05-26 17:45:19,012 - INFO - geometry_dash_ai:845 - Focus game window... Starting in 1s
-2025-05-26 17:45:20,062 - INFO - geometry_dash_ai:851 - GUI thread initiated.
-2025-05-26 17:45:20,562 - INFO - geometry_dash_ai:856 - AI training thread initiated.
-2025-05-26 17:45:20,565 - INFO - geometry_dash_ai:207 - Focused window 'Geometry Dash' via pywinauto.
-2025-05-26 17:45:20,766 - INFO - geometry_dash_ai:120 - GameEnvironment: Screen region set to {'top': 234, 'left': 1075, 'width': 842, 'height': 504, 'monitor': 1}
-2025-05-26 17:45:20,766 - WARNING - geometry_dash_ai:173 - Game Over template not specified or not found: game_over_template.png
-2025-05-26 17:45:20,785 - INFO - geometry_dash_ai:95 - DQN: Input (4, H:96, W:96), ConvOut (12, 12), LinearIn: 9216, Outputs: 2
-2025-05-26 17:45:20,879 - INFO - geometry_dash_ai:95 - DQN: Input (4, H:96, W:96), ConvOut (12, 12), LinearIn: 9216, Outputs: 2
-2025-05-26 17:47:58,282 - INFO - geometry_dash_ai:809 - Ep 1: Steps=2000, Reward=520.25, AvgLoss=N/A, Epsilon=0.9806, Mem=2000
+2025-05-26 17:51:57,971 - INFO - geometry_dash_ai:59 - Logging for GDint setup. Level: INFO, Device: cuda
+2025-05-26 17:51:57,972 - INFO - geometry_dash_ai:837 - --- GDint AI Starting --- PID: 3004
+2025-05-26 17:51:57,979 - INFO - geometry_dash_ai:842 - Keyboard listener started for 'p' key.
+2025-05-26 17:51:57,979 - INFO - geometry_dash_ai:845 - Focus game window... Starting in 2s
+2025-05-26 17:51:58,980 - INFO - geometry_dash_ai:845 - Focus game window... Starting in 1s
+2025-05-26 17:52:00,031 - INFO - geometry_dash_ai:851 - GUI thread initiated.
+2025-05-26 17:52:00,533 - INFO - geometry_dash_ai:856 - AI training thread initiated.
+2025-05-26 17:52:00,536 - INFO - geometry_dash_ai:207 - Focused window 'Geometry Dash' via pywinauto.
+2025-05-26 17:52:00,737 - INFO - geometry_dash_ai:120 - GameEnvironment: Screen region set to {'top': 234, 'left': 1075, 'width': 842, 'height': 504, 'monitor': 1}
+2025-05-26 17:52:00,737 - WARNING - geometry_dash_ai:173 - Game Over template not specified or not found: game_over_template.png
+2025-05-26 17:52:00,757 - INFO - geometry_dash_ai:95 - DQN: Input (4, H:96, W:96), ConvOut (12, 12), LinearIn: 9216, Outputs: 2
+2025-05-26 17:52:00,861 - INFO - geometry_dash_ai:95 - DQN: Input (4, H:96, W:96), ConvOut (12, 12), LinearIn: 9216, Outputs: 2
+2025-05-26 17:54:39,299 - INFO - geometry_dash_ai:809 - Ep 1: Steps=2000, Reward=520.25, AvgLoss=N/A, Epsilon=0.9806, Mem=2000
