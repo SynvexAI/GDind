@@ -6,6 +6,7 @@ __pycache__/
 gdind_log.txt
 geometrydashai_v2_log.txt
 gdint_log.txt
+gdint_final_model.pth
 
 # Virtual environments
 venv/
