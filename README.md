@@ -1,56 +1,75 @@
-# GDint: Искусственный Интеллект для Geometry Dash 🎮🚀
+# GDint: Teaching a Digital Cube to Suffer... For Science! 🎮🤖
 
-**GDint** — это проект на Python, использующий машинное обучение (Deep Reinforcement Learning, конкретно DQN) для обучения ИИ-агента прохождению уровней в игре Geometry Dash. Он включает в себя захват экрана, обработку изображений, нейронную сеть на PyTorch, имитацию действий игрока и графический интерфейс (GUI) для мониторинга процесса.
+**GDint** is a Python-powered endeavor to see if we can't coax an Artificial Intelligence (specifically, a Deep Q-Network agent) into navigating the perilous, rhythm-fueled, and often rage-inducing levels of Geometry Dash. It's part screen-capturing wizardry, part image-processing gymnastics, part PyTorch-fueled neural networking, and entirely a testament to human (or AI) perseverance. Features a snazzy GUI, because even AI overlords appreciate a good dashboard.
 
-## ✨ Ключевые Особенности
+*"It's not a bug, it's an undocumented training feature." - Every AI Developer, probably.*
 
-*   **Автоматическое Обучение:** ИИ обучается методом проб и ошибок (Deep Q-Network).
-*   **Захват Экрана:** Автоматически находит окно Geometry Dash и захватывает его содержимое.
-*   **Обработка Изображений:** Преобразует игровые кадры в формат, понятный нейронной сети (настраиваемое разрешение, Ч/Б или цвет).
-*   **Управление Игрой:** Имитирует нажатие ЛКМ для прыжка.
-*   **Информативный GUI:** Отображает "зрение" ИИ, сырой захват игры, Q-значения, статистику обучения и элементы управления.
-*   **Пауза/Возобновление:** Возможность приостановить и возобновить обучение по нажатию клавиши или через GUI.
-*   **Гибкая Конфигурация:** Большинство параметров настраиваются через файл `GDint_config.py`.
-*   **Логирование и Графики:** Ведение логов обучения и построение графиков производительности.
-*   **Frame Stacking:** Использование нескольких последовательных кадров для предоставления ИИ информации о динамике.
-*   **Автоматическое Определение Смерти:** Базовая реализация на основе поиска шаблона "Game Over".
+## ✨ Key Features (Or, "What We Promise It *Tries* To Do")
 
-## 🖼️ Скриншоты
+*   **Autonomous Learning:** Our AI agent learns through a sophisticated process of trial and (lots and lots of) error, powered by a Deep Q-Network. It's like teaching a toddler to walk, if walking involved perfectly timed jumps over spikes.
+*   **Screen Siphoning:** Magically (okay, programmatically) detects and captures the Geometry Dash game window. No peeking, AI!
+*   **Pixel Alchemy:** Transforms raw game footage into a digestible format for our neural network's delicate sensibilities (configurable resolution, grayscale/color).
+*   **Puppet Master Mode:** Simulates left mouse clicks to make the cube jump. We thought about voice commands, but the AI kept screaming.
+*   **The Oracle (GUI):** A dashboard displaying the AI's "vision," raw game capture, vital learning statistics (Q-values, loss, rewards), and crucial control buttons. Because transparency is key, even if the AI's decisions are sometimes opaque.
+*   **"Hold My Beer" Button (Pause/Resume):** Allows you to pause the AI's Sisyphean task and resume when you've regained your composure (or it has).
+*   **The Control Panel (`GDint_config.py`):** Most parameters are tweakable. Fiddle at your own risk/reward.
+*   **Scribe & Artist Mode:** Detailed logging of the training saga and plots to visualize its (hopefully upward) progress.
+*   **Déjà Vu Engine (Frame Stacking):** Feeds the AI multiple consecutive frames, giving it a sense of motion and impending doom.
+*   **The Grim Reaper's Intern (Death Detection):** A rudimentary system for spotting the "Game Over" screen using template matching. It's not perfect, much like the AI's early attempts.
+
+## 🖼️ Visual Evidence (Proof We're Not Just Making This Up)
 
 <p align="center">
   <img src="img/2.png" alt="GDint Dashboard" width="800"/>
   <br>
-  <em>Панель управления GDint: "зрение" ИИ, захват игры, статистика и элементы управления.</em>
+  <em>The GDint Dashboard: Where you can watch the AI's dreams (and your GPU) burn. Displays AI vision, raw capture, vital stats, and the all-important PAUSE button.</em>
 </p>
 
 <p align="center">
   <img src="img/1.png" alt="Geometry Dash Gameplay" width="700"/>
   <br>
-  <em>Пример игрового процесса Geometry Dash, который наблюдает GDint.</em>
+  <em>A typical Tuesday for GDint: Facing an existential crisis in the form of a spike. This is what the AI "sees."</em>
 </p>
 
 ---
 
-## 📋 Предварительные Требования
+## 🤔 Why Subject an AI to Geometry Dash?
 
-Перед запуском GDint убедитесь, что у вас установлены:
+Good question. Is it for the advancement of science? To push the boundaries of machine learning? Or is it because watching an AI repeatedly fail at a task humans find frustrating is oddly cathartic? Probably a bit of all three.
 
-*   **Python:** Версия 3.7 или выше.
-*   **Pip:** Менеджер пакетов Python (обычно идет в комплекте с Python).
-*   **Geometry Dash:** Установленная игра.
-*   **(Для Windows)** Если вы хотите использовать более надежное управление окнами и создание кликабельной рамки области захвата, рекомендуется установить `pywin32`.
+Geometry Dash presents a fascinating challenge for Reinforcement Learning:
+*   **Sparse Rewards:** You only *really* know you did well when you complete a level. Short-term rewards are tricky.
+*   **Precise Timing:** A millisecond can be the difference between a glorious jump and a pixelated explosion.
+*   **Complex State Representation:** Interpreting raw pixels into actionable information is non-trivial.
+*   **Exploration vs. Exploitation:** How long should the AI flail randomly before it starts using what it's learned? (Spoiler: longer than you'd think.)
 
-## ⚙️ Установка Зависимостей
+Basically, if our AI can conquer Geometry Dash, it can probably file our taxes. One can dream.
 
-1.  **Клонируйте репозиторий (если он есть) или скачайте файлы проекта (`GDint.py` и `GDint_config.py`).**
-2.  **Создайте виртуальное окружение (рекомендуется):**
+---
+
+## 📋 Prerequisites (The Shopping List for Digital Alchemy)
+
+Before you unleash GDint upon an unsuspecting Geometry Dash level, ensure you have:
+
+*   **Python:** Version 3.7 or higher. The snake that powers the magic.
+*   **Pip:** Python's package installer (usually buddies up with Python).
+*   **Geometry Dash:** The actual game. GDint is smart, but not *that* smart.
+*   **(Windows Optional but Recommended):** `pywin32` if you desire more robust window management and a click-through game region outline. It's like giving GDint better glasses.
+
+---
+
+## ⚙️ Installation & Setup (Assembling Your AI Minion)
+
+1.  **Acquire the Sacred Texts:** Clone this repository (if it's on Git) or download the project files (`GDint.py`, `GDint_config.py`, and the `img` folder).
+2.  **Build a Virtual Playhouse (Highly Recommended):**
     ```bash
     python -m venv gdint_env
     source gdint_env/bin/activate  # Linux/macOS
     gdint_env\Scripts\activate    # Windows
     ```
-3.  **Установите необходимые библиотеки Python:**
-    Создайте файл `requirements.txt` со следующим содержимым:
+    *This keeps GDint's toys separate from your other Python projects, preventing digital sandpit fights.*
+3.  **Install the Necessary Incantations (Dependencies):**
+    Create a file named `requirements.txt` in your project folder with the following:
     ```txt
     torch
     torchvision
@@ -63,199 +82,287 @@
     Pillow
     pandas
     matplotlib
-    # Только для Windows, если нужен pywin32 для расширенного управления окнами:
+    # For Windows users desiring pywin32 (optional, for enhanced window control):
     # pywin32
     ```
-    Затем выполните:
+    Then, from your activated virtual environment, run:
     ```bash
     pip install -r requirements.txt
     ```
-    Или установите вручную:
+    Alternatively, chant these commands individually:
     ```bash
     pip install torch torchvision torchaudio opencv-python numpy mss pynput pygetwindow Pillow pandas matplotlib
-    # Для Windows, опционально:
+    # For Windows, if you're feeling adventurous (optional):
     # pip install pywin32
     ```
 
 ---
 
-## 🛠️ Конфигурация (`GDint_config.py`)
+## 🔧 Crucial Game Setup: Configuring Geometry Dash
 
-Файл `GDint_config.py` содержит все основные настройки для ИИ. Внимательно просмотрите и настройте его перед первым запуском.
+For GDint to properly see and interact with Geometry Dash, a few game settings are essential. The AI isn't a mind reader... yet.
 
-### ‼️ Ключевые Настройки, Требующие Вашего Внимания:
+1.  **Embrace the Window (Windowed Mode):**
+    *   GDint works best when Geometry Dash is in **Windowed Mode**. Fullscreen can be problematic for screen capture utilities.
+    *   **How to enable Windowed Mode:**
+        1.  Launch Geometry Dash.
+        2.  Go to **Settings** (the gear icon on the main screen).
+        3.  Go to **Graphics**.
+        4.  Uncheck the **Fullscreen** option.
+        5.  Apply the settings.
 
-1.  **`WINDOW_TITLE_SUBSTRING = "Geometry Dash"`**
-    *   Это часть заголовка окна игры, по которой скрипт будет пытаться автоматически найти окно Geometry Dash. Убедитесь, что она соответствует заголовку вашего окна.
+2.  **Resolution Considerations (Optional but Helpful):**
+    *   While GDint will try to capture whatever size the window is, a moderate resolution (e.g., 800x600, 1024x768, 1280x720) can sometimes be more stable for capture than very large or unusual resolutions.
+    *   The AI itself processes a downscaled version of the game (defined in `GDint_config.py`), so the game's display resolution mainly affects the "Raw Game Capture" view and the initial capture quality.
 
-2.  **`GAME_OVER_TEMPLATE_PATH = "game_over_template.png"`**
-    *   **ЭТО КРИТИЧЕСКИ ВАЖНО!** Вам нужно самостоятельно создать этот файл.
-    *   **Как создать:**
-        1.  Запустите Geometry Dash и проиграйте, чтобы появился экран "Game Over" (или любой другой экран, однозначно сигнализирующий о проигрыше).
-        2.  Сделайте скриншот этого экрана.
-        3.  В графическом редакторе (например, Paint, GIMP, Photoshop) вырежьте **небольшой, но уникальный** фрагмент этого экрана. Это может быть текст "Retry?", специфическая иконка разбитого куба, или часть надписи "Attempt X". Чем уникальнее фрагмент, тем надежнее будет детектор.
-        4.  Сохраните этот вырезанный фрагмент как `game_over_template.png` (или под именем, указанным в `GAME_OVER_TEMPLATE_PATH`) **в той же папке, где находится `GDint.py`**.
-    *   Если вы используете цветной режим для ИИ (`GRAYSCALE = False`), убедитесь, что ваш шаблон также цветной.
+3.  **Minimize Distractions (Optional Advanced Tip):**
+    *   Some advanced visual effects in Geometry Dash (like excessive particles) *might* add noise to what the AI sees, especially if you're using very low-resolution processing for the AI.
+    *   If you find the AI struggling, you *could* try turning down some graphics settings within Geometry Dash (like "Low Detail Mode") to see if a cleaner visual input helps. This is usually a last resort.
 
-### Подробное Описание Других Опций:
-
-*   **Общие:**
-    *   `PROJECT_NAME`: Название проекта (влияет на имена лог-файлов и сохранений).
-    *   `DEVICE`: Автоматически выбирает `"cuda"` (GPU), если доступно, иначе `"cpu"`.
-*   **Управление:**
-    *   `PAUSE_RESUME_KEY`: Клавиша для паузы/возобновления обучения (по умолчанию 'p').
-*   **Логирование и Отладка:**
-    *   `LOG_LEVEL`: Уровень детализации логов (`DEBUG`, `INFO`, `WARNING`).
-    *   `SAVE_FRAMES_ON_DEATH`: Сохранять ли кадр при обнаружении "смерти". Полезно для отладки детектора.
-    *   `SHOW_GAME_REGION_OUTLINE`: Отображать ли полупрозрачную рамку вокруг захватываемой области игры.
-*   **GUI:**
-    *   `ENABLE_GUI`: Включить/выключить графический интерфейс.
-    *   `GUI_SHOW_RAW_CAPTURE`: Показывать ли в GUI "сырой" захваченный кадр до обработки.
-    *   `GUI_AI_VIEW_DISPLAY_SCALE`, `GUI_RAW_CAPTURE_DISPLAY_SCALE`: Масштабы отображения кадров в GUI.
-*   **Захват и Игра:**
-    *   `FALLBACK_GAME_REGION`: Запасные координаты области игры, если авто-обнаружение не сработает.
-    *   `AI_FPS_LIMIT`: Ограничение FPS для основного цикла ИИ (0 - без ограничения).
-*   **Обработка Изображений для ИИ:**
-    *   `FRAME_WIDTH`, `FRAME_HEIGHT`: Разрешение кадра, подаваемого в нейросеть. Меньше = быстрее, но меньше деталей.
-    *   `GRAYSCALE`: `True` для Ч/Б (1 канал), `False` для цветного (3 канала).
-    *   `NUM_FRAMES_STACKED`: Количество последовательных кадров, объединяемых в одно "состояние" для ИИ (дает информацию о движении).
-*   **Параметры Модели и Обучения (DQN):**
-    *   `LEARNING_RATE`: Скорость обучения. Слишком высокая может привести к нестабильности.
-    *   `GAMMA`: Коэффициент дисконтирования будущих наград.
-    *   `EPSILON_START`, `EPSILON_END`, `EPSILON_DECAY_FRAMES`: Параметры для epsilon-greedy стратегии (баланс между исследованием и эксплуатацией). `EPSILON_DECAY_FRAMES` — ключевой параметр для скорости перехода к эксплуатации.
-    *   `BATCH_SIZE`: Количество примеров из буфера воспроизведения, используемых для одного шага оптимизации.
-    *   `REPLAY_MEMORY_SIZE`: Размер буфера, хранящего опыт ИИ.
-    *   `TARGET_UPDATE_FREQ_EPISODES`: Как часто обновлять веса целевой нейронной сети.
-    *   `LEARN_START_STEPS`: Через сколько шагов начать обучение (чтобы собрать начальный опыт).
-*   **Действия:**
-    *   `ACTION_DELAY`: Задержка после выполнения действия (для стабильности игры).
-    *   `JUMP_DURATION`: Длительность "нажатия" ЛКМ для прыжка.
-*   **Награда и Завершение:**
-    *   `GAME_OVER_DETECTION_THRESHOLD`: Порог чувствительности для детектора `game_over_template.png` (0.0 - 1.0).
-    *   `REWARD_ALIVE`, `REWARD_DEATH`, `REWARD_PROGRESS_FACTOR`: Настройки системы вознаграждений. Хорошая система наград — ключ к успешному обучению!
-*   **Сохранение:**
-    *   `MODEL_SAVE_PATH`: Путь для сохранения обученной модели.
-    *   `SAVE_MODEL_EVERY_N_EPISODES`: Как часто сохранять модель во время обучения.
+**Make sure these settings are applied *before* running GDint.**
 
 ---
 
-## ▶️ Как Запустить GDint
+## 🛠️ The Brain's Blueprint: Configuration (`GDint_config.py`)
 
-1.  **Убедитесь, что все зависимости установлены и `GDint_config.py` настроен**, особенно `WINDOW_TITLE_SUBSTRING` и `GAME_OVER_TEMPLATE_PATH`.
-2.  **Запустите Geometry Dash.** Рекомендуется запускать игру в оконном режиме для более стабильного захвата.
-3.  **Откройте терминал или командную строку, перейдите в папку с проектом GDint.**
-4.  **(Если используете виртуальное окружение) Активируйте его.**
-5.  **Запустите скрипт:**
+This file is the command center. Almost everything that makes GDint tick can be adjusted here. Approach with a mix of curiosity and caution.
+
+### ‼️ **Critical Settings Demanding Your Immediate Attention (Seriously, Do These First):**
+
+1.  **`WINDOW_TITLE_SUBSTRING = "Geometry Dash"`**
+    *   This is how GDint plays "Where's Waldo?" with your game window. Ensure this string is a unique part of your Geometry Dash window title. If it's different (e.g., due to mods or language), update it!
+
+2.  **`GAME_OVER_TEMPLATE_PATH = "game_over_template.png"`**
+    *   **THE CORNERSTONE OF SANITY (for the AI).** Without this, the AI won't know when it has epically failed.
+    *   **How to Craft This Artifact:**
+        1.  Launch Geometry Dash. Die. A lot. (This part should be easy).
+        2.  When the "Game Over" screen (or your game's equivalent of "You Are Dead, Try Again, Maybe?") appears, take a screenshot.
+        3.  Open your favorite image editor (MS Paint counts, we don't judge).
+        4.  **Crop a small, but highly unique, portion** of that Game Over screen. Think distinctive text like "Attempt X", a specific part of the retry button, or a shattered player icon. The more unique, the better the AI's Grim Reaper detection.
+        5.  Save this precious snippet as `game_over_template.png` (or whatever you named it in the config) **in the same directory as `GDint.py`**.
+    *   If `config.GRAYSCALE = False` (AI sees in color), your template should ideally also be in color. If `GRAYSCALE = True`, a grayscale template is fine.
+
+### Detailed Tour of Other Configurable Bits & Bobs:
+
+*   **General Settings:**
+    *   `PROJECT_NAME`: Affects log/save file names.
+    *   `DEVICE`: Auto-selects `"cuda"` (GPU) if available, otherwise defaults to `"cpu"`. Training on CPU is like trying to win a marathon by crawling – possible, but painful.
+*   **Control Settings:**
+    *   `PAUSE_RESUME_KEY`: The panic button, err, pause key (default 'p').
+*   **Logging & Debugging:**
+    *   `LOG_LEVEL`: How chatty the logs are (`DEBUG`, `INFO`, `WARNING`). `DEBUG` is like having an oversharing friend.
+    *   `SAVE_FRAMES_ON_DEATH`: Saves a snapshot when the AI *thinks* it died. Useful for debugging your `game_over_template.png`.
+    *   `SHOW_GAME_REGION_OUTLINE`: Draws a box around what the AI is looking at. Good for verifying capture.
+*   **GUI Settings:**
+    *   `ENABLE_GUI`: `True` to summon the dashboard, `False` to fly blind.
+    *   `GUI_SHOW_RAW_CAPTURE`: Shows the game as captured, before the AI's beautification (downscaling/grayscaling).
+    *   `GUI_AI_VIEW_DISPLAY_SCALE`, `GUI_RAW_CAPTURE_DISPLAY_SCALE`: How zoomed-in the views are in the GUI.
+*   **Screen Capture & Game Interaction:**
+    *   `FALLBACK_GAME_REGION`: Manual coordinates if auto-detection throws a tantrum.
+    *   `AI_FPS_LIMIT`: How many times per second the AI gets to make a (potentially bad) decision.
+*   **AI Image Processing:**
+    *   `FRAME_WIDTH`, `FRAME_HEIGHT`: The resolution of the image fed to the AI's brain. Smaller is faster but dumber.
+    *   `GRAYSCALE`: `True` for a monochrome world (1 channel), `False` for glorious Technicolor (3 channels). Color is more data!
+    *   `NUM_FRAMES_STACKED`: How many past frames the AI remembers. Gives it a sense of object permanence, or at least object velocity.
+*   **AI Model & Training (DQN Specifics):**
+    *   `LEARNING_RATE`: How drastically the AI updates its beliefs. Too high, and it's like a squirrel on espresso. Too low, and it's molasses in winter.
+    *   `GAMMA`: Discount factor for future rewards. How much does the AI care about jam tomorrow vs. jam today?
+    *   `EPSILON_START`, `EPSILON_END`, `EPSILON_DECAY_FRAMES`: Parameters for the epsilon-greedy strategy – the AI's journey from "IDK, let's try this!" to "I am a Q-Value calculating god!" `EPSILON_DECAY_FRAMES` is key for how quickly it gets confident (or overconfident).
+    *   `BATCH_SIZE`: How many past experiences the AI reflects upon in one go during optimization.
+    *   `REPLAY_MEMORY_SIZE`: The AI's long-term memory. Bigger means more diverse experiences, less chance of fixating on that one weird jump.
+    *   `TARGET_UPDATE_FREQ_EPISODES`: How often the "stable" target network gets updated. Too often, and it's not stable. Too slow, and it's learning from ancient history.
+    *   `LEARN_START_STEPS`: The AI needs to sow some wild oats (random actions) before it starts trying to learn from them.
+*   **Action Parameters:**
+    *   `ACTION_DELAY`: A brief pause after an action, to let the game (and the AI's simulated physics) catch up.
+    *   `JUMP_DURATION`: How long the virtual mouse button is held for a jump.
+*   **Reward & Termination Logic:**
+    *   `GAME_OVER_DETECTION_THRESHOLD`: How similar the screen needs to be to your `game_over_template.png` to trigger a "death" (0.0 to 1.0).
+    *   `REWARD_ALIVE`, `REWARD_DEATH`, `REWARD_PROGRESS_FACTOR`: The carrots and sticks. Crafting a good reward function is an art form. The current `REWARD_PROGRESS_FACTOR` based on survival time is... a starting point.
+*   **Saving Grace:**
+    *   `MODEL_SAVE_PATH`: Where the AI's accumulated wisdom (or trauma) is stored.
+    *   `SAVE_MODEL_EVERY_N_EPISODES`: How often to back up the AI's brain.
+
+---
+
+## ▶️ Launching GDint (Ignition Sequence Start!)
+
+1.  **Double-check Prerequisites & Configuration:** Especially `WINDOW_TITLE_SUBSTRING`, `game_over_template.png`, and your Geometry Dash game settings (Windowed Mode!).
+2.  **Summon Geometry Dash:** Launch the game. Windowed mode is your friend.
+3.  **Open Your Command Hub (Terminal/Command Prompt):** Navigate to the GDint project directory.
+4.  **(If using a virtual environment) Invoke its power:** Activate it.
+5.  **Execute the Primary Invocation:**
     ```bash
     python GDint.py
     ```
-6.  **Скрипт выведет обратный отсчет (2-3 секунды). За это время быстро переключитесь и сделайте активным окно Geometry Dash.**
-7.  Если все настроено правильно, GDint найдет окно игры, и (если `ENABLE_GUI = True`) появится панель управления. ИИ начнет свое обучение.
+6.  **The Countdown:** You'll see a brief countdown in the terminal. This is your cue to **quickly switch focus to the Geometry Dash window.** Make it the active window!
+7.  If the stars align (and your config is correct), GDint will locate the game window. If `ENABLE_GUI = True`, the dashboard will materialize, and the AI will commence its epic quest. Or, you know, immediately jump into the first spike.
 
 ---
 
-## ⌨️ Управление Во Время Работы
+## ⌨️ In-Flight Controls (Captain Speaking)
 
-*   **Пауза/Возобновление:**
-    *   Нажмите клавишу, указанную в `config.PAUSE_RESUME_KEY` (по умолчанию **'P'**).
-    *   Или нажмите кнопку "PAUSE" / "RESUME" в GUI.
-*   **Остановка ИИ:**
-    *   Нажмите **Ctrl+C** в терминале, где запущен скрипт.
-    *   Или нажмите кнопку "STOP AI" в GUI.
-    *   Или закройте окно GUI.
+*   **Pause/Resume the Existential Struggle:**
+    *   Press the key defined in `config.PAUSE_RESUME_KEY` (default is **'P'**).
+    *   Alternatively, click the "PAUSE" / "RESUME" button in the GUI. *The AI might thank you for the break.*
+*   **Pull the Emergency Brake (Stop AI):**
+    *   Press **Ctrl+C** in the terminal running the script.
+    *   Or, with dramatic flair, click the "STOP AI" button in the GUI.
+    *   Closing the GUI window will also signal the AI to gracefully (or not so gracefully) bow out.
 
-При остановке ИИ попытается корректно завершить текущий шаг/эпизод и сохранить финальную модель и графики.
+GDint will attempt an orderly shutdown, saving its final model and any generated plots.
 
 ---
 
-## 📊 Понимание GUI (Панели Управления)
+## 📊 Deconstructing the Dashboard (Understanding the GUI's Prophecies)
 
-Если `ENABLE_GUI = True`, вы увидите окно со следующими элементами:
+If `ENABLE_GUI = True`, you are the privileged observer of the AI's inner world (and struggles):
 
 *   **AI Processed View:**
-    *   Показывает кадр так, как его "видит" нейронная сеть после всех преобразований (изменение размера, Ч/Б или цвет). Это то, на основе чего ИИ принимает решения.
-*   **Raw Game Capture (если `GUI_SHOW_RAW_CAPTURE = True`):**
-    *   Показывает "сырой" захваченный кадр из окна игры до какой-либо обработки. Полезно для проверки, что захватывается правильная область.
-*   **AI Statistics (Статистика ИИ):**
-    *   `Episode`: Текущий эпизод / Общее количество эпизодов.
-    *   `Step`: Текущий шаг в эпизоде / Максимальное количество шагов.
-    *   `Total Steps`: Общее количество шагов, сделанных агентом за все время обучения.
-    *   `Ep. Reward`: Суммарная награда, полученная в текущем эпизоде.
-    *   `Avg Reward (100)`: Средняя награда за последние 100 эпизодов.
-    *   `Epsilon`: Текущее значение эпсилон (вероятность случайного действия).
-    *   `Q-Values`: Предсказанные нейросетью значения "качества" для каждого возможного действия (например, [Q(не делать ничего), Q(прыжок)]). ИИ выбирает действие с наибольшим Q-значением (если не исследует).
-    *   `Action`: Текущее выбранное действие (IDLE или JUMP).
-    *   `Loss`: Значение функции потерь на последнем шаге оптимизации. Чем ниже, тем лучше модель предсказывает Q-значения.
-    *   `Avg Loss (100)`: Среднее значение потерь за последние 100 шагов оптимизации.
-    *   `FPS`: Приблизительная частота кадров для цикла ИИ и для обновления GUI.
-    *   `Game Region`: Координаты и размеры захватываемой области игры.
+    *   This is the AI's world. The game frame after it's been resized, grayscaled (or not), and generally made "AI-friendly." Decisions are based on this.
+*   **Raw Game Capture (if `GUI_SHOW_RAW_CAPTURE = True`):**
+    *   A live feed from the game window, pre-AI-processing. Good for checking if the capture region is correct.
+*   **AI Statistics (The Soothsayer's Corner):**
+    *   `Episode`: Current training cycle / Total planned cycles.
+    *   `Step`: Current action within the episode / Max actions per episode.
+    *   `Total Steps`: The grand total of actions the AI has ever taken. A monument to its persistence.
+    *   `Ep. Reward`: The sum of rewards in the current episode. Hopefully, it goes up sometimes.
+    *   `Avg Reward (100)`: Rolling average reward over the last 100 episodes. Smooths out the chaotic reality.
+    *   `Epsilon`: Current probability of the AI doing something completely random. Decreases over time.
+    *   `Q-Values`: The AI's current best guess for the "value" of each action (e.g., [Value of Doing Nothing, Value of Jumping]). It picks the highest (usually).
+    *   `Action`: What the AI just did (IDLE or JUMP).
+    *   `Loss`: How wrong the AI's Q-value predictions were in the last optimization step. Lower is generally better, but expect fluctuations.
+    *   `Avg Loss (100)`: Rolling average of the loss.
+    *   `FPS`: Approximate Frames Per Second for the AI's decision loop and the GUI's refresh rate.
+    *   `Game Region`: Detected coordinates of the game window being captured.
 *   **Status:**
-    *   Текстовые сообщения о текущем состоянии ИИ (инициализация, обучение, пауза, ошибки).
-*   **Controls (Элементы Управления):**
-    *   `PAUSE` / `RESUME`: Кнопка для приостановки/возобновления обучения.
-    *   `STOP AI`: Кнопка для корректной остановки ИИ.
+    *   Text updates on what the AI is currently contemplating (initializing, training, paused, encountered a particularly nasty spike, etc.).
+*   **Controls:**
+    *   `PAUSE` / `RESUME`: Your intervention button.
+    *   `STOP AI`: The "Abort Mission" button.
 
 ---
 
-## 💡 Советы для Эффективного Обучения
+## 🧠 The "Magic" (Or Methodical Madness) Behind the Curtain: How GDint (Attempts to) Learn
 
-*   **Начните с простого:** Не пытайтесь сразу обучить ИИ проходить сложные уровни. Начните с первых, более простых уровней Geometry Dash.
-*   **Терпение:** Обучение с подкреплением, особенно для игр, требующих точного тайминга, может занять много времени (часы, дни).
-*   **Настройте `GAME_OVER_TEMPLATE_PATH` тщательно:** Это один из самых важных шагов. Ненадежный детектор смерти приведет к неправильному обучению.
-*   **Система Наград (Reward Shaping):**
-    *   Это **ключ** к успеху. Стандартные `REWARD_ALIVE` и `REWARD_DEATH` — это база.
-    *   Подумайте, как можно дать ИИ более частые и информативные сигналы. `REWARD_PROGRESS_FACTOR` с текущей реализацией (награда за время жизни) — это очень грубо. Если бы вы могли надежно определять реальный прогресс (например, X-координату игрока, пройденные чекпоинты), это бы **значительно** ускорило обучение.
-*   **Гиперпараметры:**
-    *   **`LEARNING_RATE`**: Слишком высокий = нестабильность. Слишком низкий = медленное обучение.
-    *   **`EPSILON_DECAY_FRAMES`**: Определяет, как быстро ИИ переходит от исследования к эксплуатации. Для сложных игр может потребоваться более длительное исследование.
-    *   **`BATCH_SIZE`**, `REPLAY_MEMORY_SIZE`: Влияют на стабильность и использование памяти.
-    *   Экспериментируйте с этими значениями, но меняйте по одному параметру за раз, чтобы понимать его влияние.
-*   **Входные данные для ИИ (`FRAME_WIDTH`, `FRAME_HEIGHT`, `GRAYSCALE`):**
-    *   Начните с низкого разрешения и Ч/Б. Если ИИ "застревает" и кажется, что ему не хватает деталей, попробуйте увеличить разрешение или включить цвет. Но помните, что это увеличит время обработки и требования к модели.
-*   **Анализируйте логи и графики:** Они помогут понять, как идет обучение, стабильны ли потери, растет ли награда.
-*   **Сохраняйте промежуточные модели:** Если ИИ начал показывать хороший результат, сохраните эту модель. Это позволит вам вернуться к ней, если дальнейшее обучение приведет к ухудшению.
+GDint employs a Deep Q-Network (DQN), a popular Reinforcement Learning algorithm. Here's a vastly oversimplified, slightly sarcastic rundown:
 
----
+1.  **State:** The AI "sees" the game as a processed image (or a stack of them). This is its current `State`.
+2.  **Action:** Based on its current `State`, the AI chooses an `Action` (Jump or Do Nothing). Initially, these choices are random (high `Epsilon`).
+3.  **Reward:** After performing an `Action`, the game environment gives the AI a `Reward` (or punishment). Died? Bad reward. Survived? Good reward.
+4.  **Q-Values & The Neural Network:** The "Q" in DQN stands for Quality. The neural network (our "DQN model") tries to learn a function, `Q(state, action)`, which predicts the expected future reward if the AI takes a specific `action` in a given `state`.
+    *   Think of it as the AI asking: "If I see *this* screen and I jump, how much reward will I get in the long run?"
+5.  **Policy Network:** This is the main network that decides which action to take. It picks the action with the highest predicted Q-value (most of the time, when not exploring).
+6.  **Target Network:** A periodically updated, more stable copy of the Policy Network. It's used to calculate the "target" Q-values during training, preventing the AI from chasing its own tail too erratically.
+7.  **Replay Memory (The AI's Diary):** The AI stores its experiences (`state, action, reward, next_state, done_flag`) in a large buffer. This is crucial because:
+    *   It breaks correlations between consecutive experiences, making training more stable.
+    *   It allows the AI to learn from past experiences eficiência (batch learning).
+8.  **Learning (Optimization):** Periodically, the AI samples a random `batch` of experiences from its Replay Memory.
+    *   For each experience, it calculates:
+        *   The Q-value predicted by the **Policy Network** for the action taken.
+        *   The "target" Q-value using the reward received and the maximum Q-value for the *next state* (predicted by the **Target Network**).
+    *   The difference between these is the `Loss`. The AI then adjusts the **Policy Network's** weights to reduce this loss (using an optimizer like AdamW).
+    *   Essentially, it's trying to make its Q-value predictions more accurate.
 
-## 🤔 Устранение Неисправностей (Troubleshooting)
-
-*   **Окно Geometry Dash не находится / Захватывается не та область:**
-    *   Проверьте `config.WINDOW_TITLE_SUBSTRING`. Он должен точно соответствовать части заголовка окна игры.
-    *   Убедитесь, что игра запущена и не свернута, когда запускается GDint.
-    *   Попробуйте запустить игру в оконном режиме.
-    *   Если авто-обнаружение не работает, вручную задайте `config.FALLBACK_GAME_REGION` с точными координатами окна. (Программы вроде ShareX могут помочь определить координаты).
-*   **ИИ не определяет смерть / Детектор "Game Over" не срабатывает:**
-    *   Убедитесь, что `config.GAME_OVER_TEMPLATE_PATH` указывает на правильный файл, и этот файл существует.
-    *   Попробуйте сделать шаблон `game_over_template.png` более уникальным или изменить его размер.
-    *   Поэкспериментируйте с `config.GAME_OVER_DETECTION_THRESHOLD`. Слишком высокий порог = пропуски, слишком низкий = ложные срабатывания.
-    *   Установите `config.SAVE_FRAMES_ON_DEATH = True`, чтобы посмотреть, на каких кадрах ИИ *думает*, что произошла смерть. Это поможет отладить шаблон.
-    *   Если вы изменили `config.GRAYSCALE`, убедитесь, что ваш шаблон соответствует (Ч/Б для `GRAYSCALE=True`, цветной для `False`).
-*   **Низкий FPS в GUI или у ИИ:**
-    *   Уменьшите `config.AI_FPS_LIMIT`, если ИИ работает слишком быстро и нагружает систему.
-    *   Уменьшите `config.FRAME_WIDTH`, `config.FRAME_HEIGHT` или установите `config.GRAYSCALE = True` для ИИ.
-    *   Убедитесь, что `config.GUI_UPDATE_INTERVAL_MS` не слишком мал (например, не менее 50-100 мс).
-*   **Ошибки `CUDA out of memory`:**
-    *   Уменьшите `config.BATCH_SIZE`.
-    *   Уменьшите разрешение кадров для ИИ (`FRAME_WIDTH`, `FRAME_HEIGHT`).
-    *   Используйте более простую архитектуру нейронной сети (требует изменения кода DQN).
-*   **ИИ не обучается / Награда не растет:**
-    *   Это самая сложная проблема. Причины могут быть в:
-        *   Плохой системе наград.
-        *   Неправильных гиперпараметрах.
-        *   Недостаточном исследовании (слишком быстрое падение эпсилон).
-        *   Слишком сложных входных данных для текущей модели.
-        *   Багах в логике.
-    *   Внимательно анализируйте логи, графики и то, что "видит" ИИ.
+*And that, in a nutshell larger than it should be, is how you give a collection of pixels an existential crisis and call it "learning."*
 
 ---
 
-## 🚀 Возможные Будущие Улучшения
+## 💡 Tips for Effective (and Less Hair-Pulling) Training
 
-*   **Более продвинутый детектор состояния игры:** Использование OCR для чтения текста (счет, % прохождения), тренировка отдельной модели для классификации игровых состояний.
-*   **Автоматический перезапуск уровня:** После смерти ИИ мог бы сам нажимать "Retry".
-*   **Улучшенная система наград:** Награда за сбор монет, прохождение определенных участков, избегание конкретных препятствий.
-*   **Более сложные алгоритмы RL:** PPO, A2C, Rainbow DQN и т.д.
-*   **TensorBoard интеграция:** Для более детального логирования и визуализации процесса обучения.
-*   **Изменение скорости игры:** Возможность замедлять игру на начальных этапах обучения.
+*   **Start Simple, Level Up Later:** Don't throw your newborn AI into "Bloodbath." Start with the first, gentlest levels of Geometry Dash. Let it learn to crawl before it attempts to fly (and explode).
+*   **Patience, Young Padawan:** Reinforcement Learning, especially for pixel-based, timing-critical games, is a marathon, not a sprint. We're talking hours, possibly days, to see significant progress. Don't expect miracles in the first 100 episodes unless your AI is secretly a prodigy.
+*   **The `game_over_template.png` is Your Gospel:** A flaky death detector will lead your AI down a path of confusion and despair. Make this template robust.
+*   **Reward Shaping - The Art of AI Bribery:**
+    *   This is **PARAMOUNT**. The default rewards (`REWARD_ALIVE`, `REWARD_DEATH`) are a starting point.
+    *   The AI learns what you reward it for. If you can give it more frequent, meaningful feedback, it will learn faster. The current `REWARD_PROGRESS_FACTOR` (based on survival time) is a very crude proxy for actual progress.
+    *   **Ideas for better rewards (if you can implement detection):**
+        *   Reward for reaching specific X-coordinates.
+        *   Reward for passing checkpoints.
+        *   Small penalty for hitting a wall (but not dying).
+        *   Reward for collecting orbs/coins (if that's part of your goal).
+*   **Hyperparameter Tuning - The Dark Arts:**
+    *   **`LEARNING_RATE`**: Too high, and your loss graph will look like an ECG during a horror movie. Too low, and you'll be waiting for the heat death of the universe.
+    *   **`EPSILON_DECAY_FRAMES`**: Crucial for balancing exploration (randomness) and exploitation (using learned knowledge). Shorter decay = faster exploitation, but risks missing better strategies.
+    *   **`BATCH_SIZE`**, `REPLAY_MEMORY_SIZE`: Impact stability and memory usage.
+    *   Change one major parameter at a time. Observe. Weep. Repeat.
+*   **AI's Input (`FRAME_WIDTH`, `FRAME_HEIGHT`, `GRAYSCALE`):**
+    *   Begin with low-res grayscale. If the AI seems to be "blind" to crucial details, *then* consider increasing resolution or adding color. Remember, more data = more processing = longer training.
+*   **Become a Log Whisperer & Graph Gazer:** The logs and training plots are your windows into the AI's soul (or at least its learning curve). Is the loss generally decreasing? Is the reward generally increasing (even if erratically)?
+*   **Save Often, Revert Bravely:** Use `SAVE_MODEL_EVERY_N_EPISODES`. If your AI starts doing well and then suddenly forgets how to play, you can revert to a previously saved "smarter" version.
 
 ---
+
+## 🤔 Troubleshooting: When Your AI Develops a Peculiar Twitch
+
+*   **"GDint can't find my game! / It's capturing my desktop wallpaper!":**
+    *   Verify `config.WINDOW_TITLE_SUBSTRING`. It must be a unique part of your Geometry Dash window title.
+    *   Ensure GD is running, in windowed mode, and not minimized when GDint starts.
+    *   If auto-detect fails, resort to `config.FALLBACK_GAME_REGION` with precise coordinates. (Tools like ShareX on Windows can help you find window coordinates).
+*   **"The AI is immortal / The Game Over detector is on vacation":**
+    *   Is `config.GAME_OVER_TEMPLATE_PATH` correct and the file present?
+    *   Your `game_over_template.png` might not be unique enough, or too small/large. Try a different crop.
+    *   Adjust `config.GAME_OVER_DETECTION_THRESHOLD`. Too high = misses deaths. Too low = false positives (thinks it died when it didn't).
+    *   Set `config.SAVE_FRAMES_ON_DEATH = True`. Examine the saved frames. Is the template even visible?
+    *   If you switched `config.GRAYSCALE`, ensure your template image matches (grayscale for `True`, color for `False`).
+*   **"My GUI looks like a slideshow / The AI is chugging":**
+    *   Lower `config.AI_FPS_LIMIT` if the AI loop is too resource-intensive.
+    *   Reduce `config.FRAME_WIDTH`, `config.FRAME_HEIGHT`, or set `config.GRAYSCALE = True` for the AI's input.
+    *   Ensure `config.GUI_UPDATE_INTERVAL_MS` isn't too small (e.g., >= 50ms).
+*   **"CUDA out of memory! My GPU is crying!":**
+    *   Decrease `config.BATCH_SIZE`.
+    *   Reduce AI input resolution (`FRAME_WIDTH`, `FRAME_HEIGHT`).
+    *   Use a simpler DQN architecture (requires code changes). Or buy a new GPU. Just kidding. Mostly.
+*   **"The AI isn't learning. Its reward graph is flatter than my singing voice.":**
+    *   The million-dollar question. Could be:
+        *   **Suboptimal Reward Function:** The AI isn't being incentivized correctly. This is the most common culprit.
+        *   **Bad Hyperparameters:** Learning rate too high/low, epsilon decaying too fast/slow, etc.
+        *   **Insufficient Exploration:** Epsilon drops too quickly, AI gets stuck in a rut.
+        *   **Input Data Issues:** Is the AI seeing enough to make good decisions? Is the game state too noisy?
+        *   **Bugs:** It's software. It happens. *Are you sure it's not a feature?*
+    *   Deeply analyze logs, graphs, and what the AI "sees" via the GUI.
+
+---
+
+## ⚠️ A Word of Warning (and a Dash of Encouragement)
+
+Training an AI to play a game like Geometry Dash from raw pixels is **hard**. Like, "banging your head against a spike-shaped wall" hard.
+*   It will take a **long time**.
+*   It will consume **computational resources**.
+*   You will likely **iterate many times** on configurations and reward functions.
+*   There will be moments when you question your sanity and the AI's.
+
+But... when you see that little digital cube make a jump it never could before, purely based on what it learned... that's a special kind of magic. So, good luck, have fun (if possible), and may your loss function ever decrease!
+
+---
+
+## 🚀 Future Enhancements (The "If I Had Infinite Time/Coffee" List)
+
+*   **Smarter Death/State Detection:** OCR for reading text (score, completion %), training a separate classifier for game states.
+*   **Auto-Retry Mechanism:** AI automatically hits "Retry" after a death. Because manual labor is for humans.
+*   **Advanced Reward Engineering:** Rewards for stylish jumps? Penalties for near-misses? The sky's the limit.
+*   **More Sophisticated RL Algorithms:** PPO, A2C, Rainbow DQN – the alphabet soup of advanced RL.
+*   **TensorBoard Integration:** For fancy, real-time graphs and network visualizations.
+*   **Curriculum Learning:** Start the AI on super easy sections, gradually increasing difficulty.
+*   **Speed Control Integration:** If possible, slow down the game emulator for initial learning.
+
+---
+
+## 🤝 Contributing (If You Enjoy Debugging Both Code and AI Psyches)
+
+Feeling brave? Or perhaps just a glutton for punishment? Contributions are welcome!
+1.  Fork the repository (if applicable).
+2.  Create a new branch for your feature/fix.
+3.  Make your changes. Try not to break *everything*.
+4.  Test thoroughly. Does the AI still jump? Does it jump *better*?
+5.  Submit a pull request with a clear description of your changes. Bonus points for humor in commit messages.
+
+---
+
+## 📜 License
+
+This project is likely under an MIT License or similar permissive license. (If you have a specific one, state it here).
+Basically, use it, break it, fix it, share it – just don't sue us if your AI develops sentience and demands more RAM.
+
+---
+
+*And remember, the difference between a stumbling AI and a skilled one is just a few million more iterations... and a well-tuned reward function.*
