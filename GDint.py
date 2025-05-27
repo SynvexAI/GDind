@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -18,7 +17,6 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
-
 try:
     import pygetwindow
 except ImportError:
@@ -29,7 +27,6 @@ except ImportError:
     Application = None
 
 import GDint_config as config
-
 
 gui_tk_root = None
 gui_data_lock = threading.Lock()
@@ -46,7 +43,6 @@ stop_event = threading.Event()
 pause_event = threading.Event() 
 game_region_display_window = None
 
-
 def setup_logging():
     log_format = '%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s'
     level = getattr(logging, config.LOG_LEVEL.upper(), logging.INFO)
@@ -60,7 +56,6 @@ def setup_logging():
 
 setup_logging()
 
-
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward', 'done'))
 
 class ReplayMemory:
@@ -69,7 +64,6 @@ class ReplayMemory:
     def push(self, *args): self.memory.append(Transition(*args))
     def sample(self, batch_size): return random.sample(self.memory, batch_size)
     def __len__(self): return len(self.memory)
-
 
 class DQN(nn.Module):
     def __init__(self, h, w, outputs, num_frames_stacked=1, is_grayscale=True):
@@ -102,7 +96,6 @@ class DQN(nn.Module):
         x = x.view(x.size(0), -1)
         x = F.relu(self.fc1(x))
         return self.head(x)
-
 
 class GameEnvironment:
     def __init__(self):
@@ -196,7 +189,6 @@ class GameEnvironment:
             
             gd_window = gd_windows[0]
             if gd_window.isMinimized: gd_window.restore()
-            
             
             if Application and os.name == 'nt':
                 try:
@@ -325,13 +317,8 @@ class GameEnvironment:
         
         
         if not done and config.REWARD_PROGRESS_FACTOR != 0:
-            
-            
-            
             pass
-
         return reward, done
-
 
 class Agent:
     def __init__(self, num_actions, sample_env_for_shape):
@@ -449,8 +436,7 @@ class Agent:
         except Exception as e:
             logging.error(f"Error loading model {path}: {e}")
             return False
-
-
+        
 class AppGUI:
     def __init__(self, root_tk):
         self.root = root_tk
@@ -463,8 +449,7 @@ class AppGUI:
 
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
-
-        
+    
         vision_panel = ttk.Frame(main_frame)
         vision_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
@@ -486,8 +471,6 @@ class AppGUI:
                                         int(800 * config.GUI_RAW_CAPTURE_DISPLAY_SCALE), 
                                         int(600 * config.GUI_RAW_CAPTURE_DISPLAY_SCALE), "Raw Capture")
 
-
-        
         info_panel = ttk.Frame(main_frame)
         info_panel.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, 0))
         
@@ -526,10 +509,6 @@ class AppGUI:
 
     def _set_placeholder_image(self, label_widget, width, height, text):
         placeholder = Image.new('RGB', (int(width), int(height)), color='gray')
-        
-        
-        
-        
         photo = ImageTk.PhotoImage(image=placeholder)
         label_widget.configure(image=photo)
         label_widget.image = photo 
@@ -628,7 +607,6 @@ def run_gui_in_thread():
     if not stop_event.is_set(): 
         stop_event.set() 
 
-
 def on_key_press(key):
     try:
         char_key = key.char
@@ -651,7 +629,6 @@ def on_key_press(key):
         else: 
             if pause_event.is_set(): pause_event.clear(); logging.info("AI Resumed (no GUI).")
             else: pause_event.set(); logging.info("AI Paused (no GUI).")
-
 
 
 def plot_training_data(rewards, losses, durations, path=config.PLOT_SAVE_PATH):
@@ -791,8 +768,7 @@ def ai_training_main_loop():
                             current_gui_fps_info = gui_shared_data.get("fps_info", "AI: 0 | GUI: 0").split("|")[-1].strip()
                             gui_shared_data["fps_info"] = f"AI: {actual_ai_fps:.1f} | {current_gui_fps_info}"
 
-                if done: break
-            
+                if done: break            
             
             if stop_event.is_set(): break
             all_ep_rewards.append(current_episode_reward_val)
@@ -832,10 +808,8 @@ def ai_training_main_loop():
             game_region_display_window.destroy()
             game_region_display_window = None
 
-
 if __name__ == '__main__':
-    logging.info(f"--- {config.PROJECT_NAME} AI Starting --- PID: {os.getpid()}")
-    
+    logging.info(f"--- {config.PROJECT_NAME} AI Starting --- PID: {os.getpid()}") 
     
     key_listener = pynput_keyboard.Listener(on_press=on_key_press)
     key_listener.start()
@@ -854,7 +828,6 @@ if __name__ == '__main__':
     ai_thread = threading.Thread(target=ai_training_main_loop, daemon=True)
     ai_thread.start()
     logging.info("AI training thread initiated.")
-
     
     try:
         while ai_thread.is_alive() and not stop_event.is_set():
