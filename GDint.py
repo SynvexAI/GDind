@@ -819,7 +819,6 @@ if __name__ == '__main__':
         logging.info(f"Focus game window... Starting in {i}s")
         time.sleep(1)
 
-
     if config.ENABLE_GUI:
         gui_thread = threading.Thread(target=run_gui_in_thread, daemon=True)
         gui_thread.start()
