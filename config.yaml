@@ -1,0 +1,56 @@
+capture:
+  window_title: "Geometry Dash"
+  frame_rate: 30
+  
+  
+
+game:
+  
+  restart_cooldown_ms: 1000
+
+
+death_detection:
+  
+  
+  death_detection_roi: 
+    use: false 
+    x_start_ratio: 0.4
+    y_start_ratio: 0.5
+    width_ratio: 0.2
+    height_ratio: 0.1
+    
+    
+    
+    
+
+model:
+  type: "DQN"
+  learning_rate: 0.00025
+  batch_size: 32
+  gamma: 0.99 
+  epsilon_start: 1.0 
+  epsilon_end: 0.01 
+  epsilon_decay: 50000 
+  target_update_frequency: 1000 
+  replay_buffer_size: 50000
+  min_replay_buffer_size: 1000 
+  num_actions: 2 
+  save_path: "gdint_model.pth"
+  image_height: 84
+  image_width: 84
+  frame_stack: 4
+
+hotkeys:
+  pause_resume: "f8"
+  exit_bot: "f9"
+
+logging:
+  log_file: "gdint.log"
+  console_level: "INFO" 
+  file_level: "DEBUG"
+
+visualization:
+  show_ai_vision: true
+  show_training_plot: true
+  plot_update_frequency_episodes: 1
+  stats_update_frequency_seconds: 1
