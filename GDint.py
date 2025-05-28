@@ -75,6 +75,38 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
         num_input_channels = (1 if is_grayscale else 3) * num_frames_stacked
         
+        
+        self.conv1 = nn.Conv2d(num_input_channels, 64, kernel_size=8, stride=4, padding=2) 
+        self.bn1 = nn.BatchNorm2d(64)
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1) 
+        self.bn2 = nn.BatchNorm2d(128)
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1) 
+        self.bn3 = nn.BatchNorm2d(128)
+
+        def conv_out_size(size, kernel, stride, padding):
+            return (size - kernel + 2 * padding) // stride + 1
+        
+        final_h = conv_out_size(conv_out_size(conv_out_size(h, 8, 4, 2), 4, 2, 1), 3, 1, 1)
+        final_w = conv_out_size(conv_out_size(conv_out_size(w, 8, 4, 2), 4, 2, 1), 3, 1, 1)
+        linear_input_size = final_h * final_w * 128 
+        
+        
+        self.fc1 = nn.Linear(linear_input_size, 1024) 
+        self.head = nn.Linear(1024, outputs) 
+        logging.info(f"DQN: Input ({num_input_channels}, H:{h}, W:{w}), ConvOut ({final_h}, {final_w}), LinearIn: {linear_input_size}, Outputs: {outputs}")
+
+    def forward(self, x):
+        x = x / 255.0 
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = x.view(x.size(0), -1) 
+        x = F.relu(self.fc1(x))
+        return self.head(x)
+    def __init__(self, h, w, outputs, num_frames_stacked=1, is_grayscale=True):
+        super(DQN, self).__init__()
+        num_input_channels = (1 if is_grayscale else 3) * num_frames_stacked
+        
         self.conv1 = nn.Conv2d(num_input_channels, 32, kernel_size=8, stride=4, padding=2) 
         self.bn1 = nn.BatchNorm2d(32)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1) 
@@ -297,6 +329,37 @@ class GameEnvironment:
 
     def _get_reward_and_done(self, current_raw_frame_bgr):
         done = False
+        reward = config.REWARD_ALIVE 
+
+        frame_for_detection = current_raw_frame_bgr
+        if config.GRAYSCALE and self.game_over_template is not None and len(self.game_over_template.shape)==2:
+            frame_for_detection = cv2.cvtColor(current_raw_frame_bgr, cv2.COLOR_BGR2GRAY)
+        
+        if self.game_over_template is not None:
+            search_area_go = frame_for_detection
+            if config.GAME_OVER_SEARCH_REGION:
+                x, y, w, h = config.GAME_OVER_SEARCH_REGION
+                max_h, max_w = search_area_go.shape[:2]
+                x, y = max(0, x), max(0, y)
+                w, h = min(w, max_w - x), min(h, max_h - y)
+                if w > 0 and h > 0: search_area_go = search_area_go[y:y+h, x:x+w]
+            
+            is_game_over, match_val = self._match_template_cv(search_area_go, self.game_over_template, config.GAME_OVER_DETECTION_THRESHOLD)
+            if is_game_over:
+                logging.debug(f"Game Over detected (match: {match_val:.2f}).")
+                done = True
+                reward = config.REWARD_DEATH 
+                if config.SAVE_FRAMES_ON_DEATH:
+                    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    
+                    
+                    
+                    cv2.imwrite(f"death_frame_{ts}.png", current_raw_frame_bgr)
+                return reward, done 
+        pass 
+
+        return reward, done
+        done = False
         reward = config.REWARD_ALIVE
 
         frame_for_detection = current_raw_frame_bgr
@@ -375,6 +438,47 @@ class Agent:
         return torch.tensor([[action_val]], device=config.DEVICE, dtype=torch.long)
 
     def optimize_model(self):
+        if len(self.memory) < config.BATCH_SIZE or self.total_steps_done_in_training < config.LEARN_START_STEPS:
+            return None
+        
+        transitions = self.memory.sample(config.BATCH_SIZE)
+        batch = Transition(*zip(*transitions))
+
+        non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), 
+                                     device=config.DEVICE, dtype=torch.bool)
+        
+        non_final_next_states_list = [s for s in batch.next_state if s is not None]
+        if not non_final_next_states_list: 
+             non_final_next_states = None
+        else:
+            non_final_next_states = torch.cat(non_final_next_states_list)
+
+        state_batch = torch.cat(batch.state)
+        action_batch = torch.cat(batch.action)
+        reward_batch = torch.cat(batch.reward)
+
+        state_action_values = self.policy_net(state_batch).gather(1, action_batch)
+        next_state_values = torch.zeros(config.BATCH_SIZE, device=config.DEVICE)
+        
+        if non_final_next_states is not None and non_final_next_states.size(0) > 0:
+            with torch.no_grad():
+                
+                policy_next_actions = self.policy_net(non_final_next_states).max(1)[1].unsqueeze(1)
+                
+                next_state_values[non_final_mask] = self.target_net(non_final_next_states).gather(1, policy_next_actions).squeeze(1)
+        
+        expected_state_action_values = (next_state_values * config.GAMMA) + reward_batch
+        criterion = nn.SmoothL1Loss()
+        loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0) 
+        self.optimizer.step()
+        
+        if config.ENABLE_GUI:
+            with gui_data_lock: gui_shared_data["current_loss"] = loss.item()
+        return loss.item()
         if len(self.memory) < config.BATCH_SIZE or self.total_steps_done_in_training < config.LEARN_START_STEPS:
             return None
         
