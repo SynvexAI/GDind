@@ -1,19 +1,25 @@
-2025-05-28 12:43:41,000 - INFO - GDint:71 - Logging for GDint setup. Level: INFO, Device: cuda
-2025-05-28 12:43:41,001 - INFO - GDint:1191 - --- GDint AI Main Script Starting --- PID: 22712
-2025-05-28 12:43:41,007 - INFO - GDint:1196 - Keyboard listener started. Press 'p' to Pause/Resume AI.
-2025-05-28 12:43:41,008 - INFO - GDint:1200 - Please focus the Geometry Dash game window... Starting AI in 2 seconds.
-2025-05-28 12:43:42,008 - INFO - GDint:1200 - Please focus the Geometry Dash game window... Starting AI in 1 seconds.
-2025-05-28 12:43:43,060 - INFO - GDint:1208 - GUI thread has been initiated.
-2025-05-28 12:43:43,560 - INFO - GDint:1214 - AI training thread has been initiated.
-2025-05-28 12:43:43,563 - INFO - GDint:281 - Game window moved/resized. Old: {'left': 0, 'top': 0, 'width': 1920, 'height': 1080}, New: {'top': 272, 'left': 928, 'width': 848, 'height': 507, 'monitor': 1}
-2025-05-28 12:43:43,563 - INFO - GDint:143 - GameEnvironment Initialized. Screen region set to: {'top': 272, 'left': 928, 'width': 848, 'height': 507, 'monitor': 1}
-2025-05-28 12:43:43,564 - WARNING - GDint:206 - Game Over Screen template path not specified or file not found: img/game_over_template.png
-2025-05-28 12:43:43,564 - WARNING - GDint:206 - Player Death Effect template path not specified or file not found: img/player_shatter_template.png
-2025-05-28 12:43:43,598 - INFO - GDint:227 - Loaded Spike template from: img/spike_template.png, Final Shape: (120, 122)
-2025-05-28 12:43:43,603 - INFO - GDint:166 - GameEnvironment Initialized. Screen region set to: {'top': 272, 'left': 928, 'width': 848, 'height': 507, 'monitor': 1}
-2025-05-28 12:43:43,604 - WARNING - GDint:206 - Game Over Screen template path not specified or file not found: img/game_over_template.png
-2025-05-28 12:43:43,604 - WARNING - GDint:206 - Player Death Effect template path not specified or file not found: img/player_shatter_template.png
-2025-05-28 12:43:43,605 - INFO - GDint:227 - Loaded Spike template from: img/spike_template.png, Final Shape: (120, 122)
-2025-05-28 12:43:44,062 - INFO - GDint:1229 - Main thread: Waiting for AI training thread to complete...
-2025-05-28 12:43:44,062 - INFO - GDint:1237 - Main thread: Waiting for GUI thread to complete...
-2025-05-28 12:43:44,086 - INFO - GDint:935 - GUI thread has finished execution.
+2025-05-28 12:47:44,141 - INFO - GDint:71 - Logging for GDint setup. Level: INFO, Device: cuda
+2025-05-28 12:47:44,142 - INFO - GDint:1191 - --- GDint AI Main Script Starting --- PID: 24236
+2025-05-28 12:47:44,232 - INFO - GDint:1196 - Keyboard listener started. Press 'p' to Pause/Resume AI.
+2025-05-28 12:47:44,232 - INFO - GDint:1200 - Please focus the Geometry Dash game window... Starting AI in 2 seconds.
+2025-05-28 12:47:45,233 - INFO - GDint:1200 - Please focus the Geometry Dash game window... Starting AI in 1 seconds.
+2025-05-28 12:47:46,284 - INFO - GDint:1208 - GUI thread has been initiated.
+2025-05-28 12:47:46,786 - INFO - GDint:1214 - AI training thread has been initiated.
+2025-05-28 12:47:46,789 - INFO - GDint:281 - Game window moved/resized. Old: {'left': 0, 'top': 0, 'width': 1920, 'height': 1080}, New: {'top': 345, 'left': 900, 'width': 848, 'height': 507, 'monitor': 1}
+2025-05-28 12:47:46,789 - INFO - GDint:143 - GameEnvironment Initialized. Screen region set to: {'top': 345, 'left': 900, 'width': 848, 'height': 507, 'monitor': 1}
+2025-05-28 12:47:46,789 - ERROR - GDint:210 - Failed to load Game Over Screen template image from img/game_over_template.png
+2025-05-28 12:47:46,790 - ERROR - GDint:210 - Failed to load Player Death Effect template image from img/player_shatter_template.png
+2025-05-28 12:47:46,790 - INFO - GDint:227 - Loaded Spike template from: img/spike_template.png, Final Shape: (120, 122)
+2025-05-28 12:47:46,812 - INFO - GDint:331 - Game region outline display window (win32gui) created.
+2025-05-28 12:47:46,815 - INFO - GDint:166 - GameEnvironment Initialized. Screen region set to: {'top': 345, 'left': 900, 'width': 848, 'height': 507, 'monitor': 1}
+2025-05-28 12:47:46,815 - ERROR - GDint:210 - Failed to load Game Over Screen template image from img/game_over_template.png
+2025-05-28 12:47:46,816 - ERROR - GDint:210 - Failed to load Player Death Effect template image from img/player_shatter_template.png
+2025-05-28 12:47:46,816 - INFO - GDint:227 - Loaded Spike template from: img/spike_template.png, Final Shape: (120, 122)
+2025-05-28 12:47:46,823 - ERROR - GDint:333 - Failed to create win32gui region display window: (1410, 'RegisterClass', 'Класс уже существует.')
+2025-05-28 12:47:46,825 - INFO - GDint:187 - GameEnvironment Initialized. Screen region set to: {'top': 345, 'left': 900, 'width': 848, 'height': 507, 'monitor': 1}
+2025-05-28 12:47:46,826 - ERROR - GDint:210 - Failed to load Game Over Screen template image from img/game_over_template.png
+2025-05-28 12:47:46,826 - ERROR - GDint:210 - Failed to load Player Death Effect template image from img/player_shatter_template.png
+2025-05-28 12:47:46,826 - INFO - GDint:227 - Loaded Spike template from: img/spike_template.png, Final Shape: (120, 122)
+2025-05-28 12:47:46,827 - ERROR - GDint:333 - Failed to create win32gui region display window: (1410, 'RegisterClass', 'Класс уже существует.')
+2025-05-28 12:47:46,849 - INFO - GDint:113 - DQN Initialized: Input Channels=4, H=96, W=96, ConvOut H=12, W=12, LinearInputSize=9216, Outputs=2
+2025-05-28 12:47:46,954 - INFO - GDint:113 - DQN Initialized: Input Channels=4, H=96, W=96, ConvOut H=12, W=12, LinearInputSize=9216, Outputs=2
