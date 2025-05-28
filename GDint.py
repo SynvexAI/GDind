@@ -393,7 +393,14 @@ class AppGUI:
         self.stop_button = ttk.Button(control_frame, text="STOP AI", command=self._on_stop_button); self.stop_button.pack(fill=tk.X, padx=5, pady=5)
         self.last_gui_update_time = time.perf_counter(); self.gui_fps_counter = 0; self.update_gui_info()
     def _set_placeholder_image(self, lbl, w, h): ph=Image.new('RGB',(int(w),int(h)),color='gray'); pht=ImageTk.PhotoImage(image=ph); lbl.configure(image=pht); lbl.image=pht
-    def _on_gui_closing(self): logging.info("GUI closed."); stop_event.set(); if pause_event.is_set(): pause_event.clear(); self.root.destroy(); global gui_tk_root; gui_tk_root = None
+    def _on_gui_closing(self):
+        logging.info("GUI closed.")
+        stop_event.set()
+        if pause_event.is_set():
+            pause_event.clear()
+        self.root.destroy()
+        global gui_tk_root
+        gui_tk_root = None
     def _toggle_pause(self):
         if pause_event.is_set(): pause_event.clear(); logging.info("AI Resumed via GUI.")
         else: pause_event.set(); logging.info("AI Paused via GUI.")
