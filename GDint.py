@@ -1,2 +1,1 @@
-STAY SHIT COMMENTS!
-Relax bro ;)
+ WIP: Telepathic code reader still under development. Comments required.
