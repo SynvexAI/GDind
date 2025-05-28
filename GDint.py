@@ -1,4 +1,4 @@
-# GDint.py
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -129,7 +129,7 @@ class GameEnvironment:
         if is_color_template_needed:
             if len(tpl.shape) == 3 and tpl.shape[2] == 4: tpl = cv2.cvtColor(tpl, cv2.COLOR_BGRA2BGR)
             elif len(tpl.shape) == 2: logging.warning(f"{name} template is grayscale but color is configured for AI.")
-        else: # Grayscale needed
+        else: 
             if len(tpl.shape) == 3 and tpl.shape[2] == 4: tpl = cv2.cvtColor(tpl, cv2.COLOR_BGRA2GRAY)
             elif len(tpl.shape) == 3: tpl = cv2.cvtColor(tpl, cv2.COLOR_BGR2GRAY)
         logging.info(f"Loaded {name} template: {path}, Shape: {tpl.shape}"); return tpl
@@ -137,28 +137,28 @@ class GameEnvironment:
     def _update_and_focus_game_window(self, force_check=False):
         current_time = time.perf_counter()
         if not force_check and current_time - self.last_window_check_time < config.DYNAMIC_WINDOW_TRACKING_INTERVAL:
-            if self.game_window_handle: return self.monitor_region # Assume still valid
-            # Fallthrough if handle is None
+            if self.game_window_handle: return self.monitor_region 
+            
         self.last_window_check_time = current_time
-        if not pygetwindow: return self.monitor_region # Return current/fallback if no lib
+        if not pygetwindow: return self.monitor_region 
         try:
             gd_windows = pygetwindow.getWindowsWithTitle(config.WINDOW_TITLE_SUBSTRING)
             if not gd_windows: self.game_window_handle = None; return self.monitor_region
             gd_window = gd_windows[0]
-            self.game_window_handle = gd_window._hWnd if hasattr(gd_window, '_hWnd') else None # For pywinauto
+            self.game_window_handle = gd_window._hWnd if hasattr(gd_window, '_hWnd') else None 
 
             if gd_window.isMinimized: gd_window.restore(); time.sleep(0.1)
             if not gd_window.isActive:
                 try: gd_window.activate(); time.sleep(0.1)
-                except Exception: pass # Best effort
+                except Exception: pass 
                 if Application and os.name == 'nt' and self.game_window_handle:
                     try:
                         app = Application().connect(handle=self.game_window_handle, timeout=1)
                         app.window(handle=self.game_window_handle).set_focus()
-                    except Exception: pass # Best effort focus
+                    except Exception: pass 
             
             new_region = {"top": gd_window.top, "left": gd_window.left, "width": gd_window.width, "height": gd_window.height, "monitor": 1}
-            if new_region["width"] > 0 and new_region["height"] > 0: # Basic sanity check
+            if new_region["width"] > 0 and new_region["height"] > 0: 
                 if self.monitor_region != new_region:
                     logging.info(f"Game window moved/resized. Old: {self.monitor_region}, New: {new_region}")
                     self.monitor_region = new_region
@@ -166,7 +166,7 @@ class GameEnvironment:
                     if config.SHOW_GAME_REGION_OUTLINE: self._update_region_display_window_geometry()
                 return self.monitor_region
         except Exception as e: logging.error(f"Error in _update_and_focus_game_window: {e}"); self.game_window_handle = None
-        return self.monitor_region # Return old/fallback if error
+        return self.monitor_region 
 
     def _create_region_display_window(self):
         global game_region_display_window_handle
@@ -180,7 +180,7 @@ class GameEnvironment:
             wc.hInstance = win32gui.GetModuleHandle(None)
             wc.lpszClassName = "GDintRegionFrame"
             wc.style = win32con.CS_HREDRAW | win32con.CS_VREDRAW
-            wc.hbrBackground = win32gui.GetStockObject(win32con.NULL_BRUSH) # Transparent background
+            wc.hbrBackground = win32gui.GetStockObject(win32con.NULL_BRUSH) 
             wc.lpfnWndProc = {win32con.WM_PAINT: self._on_paint_region_display}
             classAtom = win32gui.RegisterClass(wc)
             
@@ -189,7 +189,7 @@ class GameEnvironment:
                 self.monitor_region['left'], self.monitor_region['top'], 
                 self.monitor_region['width'], self.monitor_region['height'],
                 None, None, wc.hInstance, None)
-            win32gui.SetLayeredWindowAttributes(hwnd, 0, 255, win32con.LWA_ALPHA) # Full opacity for frame itself
+            win32gui.SetLayeredWindowAttributes(hwnd, 0, 255, win32con.LWA_ALPHA) 
             game_region_display_window_handle = hwnd
             logging.info("Game region outline display window created.")
         except Exception as e: logging.error(f"Failed to create region display (win32gui): {e}")
@@ -197,10 +197,10 @@ class GameEnvironment:
     def _on_paint_region_display(self, hwnd, msg, wparam, lparam):
         hdc, ps = win32gui.BeginPaint(hwnd)
         rect = win32gui.GetClientRect(hwnd)
-        color = 0x00FF00 if config.GAME_REGION_OUTLINE_BORDER_COLOR == "lime" else 0x0000FF # BGR for GDI
+        color = 0x00FF00 if config.GAME_REGION_OUTLINE_BORDER_COLOR == "lime" else 0x0000FF 
         pen = win32gui.CreatePen(win32con.PS_SOLID, config.GAME_REGION_OUTLINE_THICKNESS, color)
         win32gui.SelectObject(hdc, pen)
-        win32gui.SelectObject(hdc, win32gui.GetStockObject(win32con.NULL_BRUSH)) # No fill
+        win32gui.SelectObject(hdc, win32gui.GetStockObject(win32con.NULL_BRUSH)) 
         win32gui.Rectangle(hdc, 0, 0, rect[2], rect[3])
         win32gui.DeleteObject(pen)
         win32gui.EndPaint(hwnd, ps)
@@ -216,7 +216,7 @@ class GameEnvironment:
             except Exception as e: logging.warning(f"Could not update region display geometry: {e}")
 
     def _capture_frame_raw_bgr(self):
-        self._update_and_focus_game_window() # Ensure region is current
+        self._update_and_focus_game_window() 
         try:
             sct_img = self.sct.grab(self.monitor_region)
             return cv2.cvtColor(np.array(sct_img), cv2.COLOR_BGRA2BGR)
@@ -241,9 +241,9 @@ class GameEnvironment:
         res = cv2.matchTemplate(frame_to_search_in, template, cv2.TM_CCOEFF_NORMED)
         loc = np.where(res >= threshold)
         th, tw = template.shape[:2]
-        for pt in zip(*loc[::-1]): # Switch to (x, y)
-            detections.append((pt[0], pt[1], tw, th)) # x, y, w, h
-        # Non-maximum suppression could be added here if detections overlap heavily
+        for pt in zip(*loc[::-1]): 
+            detections.append((pt[0], pt[1], tw, th)) 
+        
         return detections[:config.MAX_SPIKES_TO_DRAW]
 
 
@@ -266,9 +266,9 @@ class GameEnvironment:
         if config.ENABLE_GUI:
             detected_spikes_coords = []
             if config.GUI_MARK_DETECTED_OBJECTS and self.spike_tpl is not None:
-                # Search for spikes in the AI's processed view
-                frame_for_spike_detection = processed_next_frame_for_ai # This is already grayscale if config.GRAYSCALE is True
-                if not config.GRAYSCALE and len(self.spike_tpl.shape) == 2: # Color AI view but grayscale spike template
+                
+                frame_for_spike_detection = processed_next_frame_for_ai 
+                if not config.GRAYSCALE and len(self.spike_tpl.shape) == 2: 
                     frame_for_spike_detection = cv2.cvtColor(processed_next_frame_for_ai, cv2.COLOR_BGR2GRAY)
 
                 detected_spikes_coords = self._detect_objects(frame_for_spike_detection, self.spike_tpl, config.SPIKE_DETECTION_THRESHOLD)
@@ -296,14 +296,14 @@ class GameEnvironment:
 
         for tpl, threshold, tpl_name in templates_to_check:
             frame_for_detection = current_raw_frame_bgr
-            # If template is grayscale but main detection frame isn't (and AI isn't grayscale), convert detection frame
+            
             if len(tpl.shape) == 2 and (not config.GRAYSCALE or len(frame_for_detection.shape) == 3):
                 frame_for_detection = cv2.cvtColor(current_raw_frame_bgr, cv2.COLOR_BGR2GRAY)
-            elif len(tpl.shape) == 3 and len(frame_for_detection.shape) == 2 : # Color template, grayscale frame (unlikely if AI is color)
-                 continue # Mismatch
+            elif len(tpl.shape) == 3 and len(frame_for_detection.shape) == 2 : 
+                 continue 
 
             search_area = frame_for_detection
-            if config.GAME_OVER_SEARCH_REGION and tpl_name == "ScreenTpl": # Only apply search region to screen template
+            if config.GAME_OVER_SEARCH_REGION and tpl_name == "ScreenTpl": 
                 x,y,w,h = config.GAME_OVER_SEARCH_REGION; max_h, max_w = search_area.shape[:2]
                 x,y=max(0,x),max(0,y); w,h=min(w,max_w-x),min(h,max_h-y)
                 if w > 0 and h > 0: search_area = search_area[y:y+h, x:x+w]
@@ -411,9 +411,9 @@ class AppGUI:
         if ai_pil_img:
             w,h = ai_pil_img.width, ai_pil_img.height; disp_w, disp_h = int(w*config.GUI_AI_VIEW_DISPLAY_SCALE), int(h*config.GUI_AI_VIEW_DISPLAY_SCALE)
             if config.GUI_MARK_DETECTED_OBJECTS and detected_spikes:
-                # Scale spike coords to display size
+                
                 scaled_spikes = [(int(x*config.GUI_AI_VIEW_DISPLAY_SCALE), int(y*config.GUI_AI_VIEW_DISPLAY_SCALE), int(sw*config.GUI_AI_VIEW_DISPLAY_SCALE), int(sh*config.GUI_AI_VIEW_DISPLAY_SCALE)) for x,y,sw,sh in detected_spikes]
-                # Create a mutable copy for drawing
+                
                 displayable_ai_img = ai_pil_img.copy().resize((disp_w,disp_h), Image.Resampling.NEAREST)
                 displayable_ai_img = self._draw_detections_on_pil_image(displayable_ai_img, scaled_spikes, color="orange", thickness=2)
             else: displayable_ai_img = ai_pil_img.resize((disp_w,disp_h), Image.Resampling.NEAREAST)
@@ -436,7 +436,7 @@ class AppGUI:
             with gui_data_lock: cur_ai_fps_info = gui_shared_data.get("fps_info","AI:0|GUI:0").split("|")[0].strip(); gui_shared_data["fps_info"]=f"{cur_ai_fps_info}|GUI:{act_gui_fps:.1f}"
         if self.root and self.root.winfo_exists(): self.root.after(config.GUI_UPDATE_INTERVAL_MS, self.update_gui_info)
 
-def run_gui_in_thread(): global gui_tk_root; gui_tk_root = tk.Tk(); AppGUI(gui_tk_root); gui_tk_root.mainloop(); logging.info("GUI thread finished."); stop_event.set() # Signal AI if GUI closes
+def run_gui_in_thread(): global gui_tk_root; gui_tk_root = tk.Tk(); AppGUI(gui_tk_root); gui_tk_root.mainloop(); logging.info("GUI thread finished."); stop_event.set() 
 def on_key_press(key):
     try: char_key = key.char
     except AttributeError: return
@@ -482,7 +482,7 @@ def ai_training_main_loop():
                 with gui_data_lock: gui_shared_data["episode"]=i_ep; gui_shared_data["current_episode_reward"]=0.0; gui_shared_data["status_text"]=f"Running Ep.{i_ep}..."
             for t_st in range(1, config.MAX_STEPS_PER_EPISODE+1):
                 if stop_event.is_set(): break
-                if pause_event.is_set(): # Mid-episode pause check
+                if pause_event.is_set(): 
                     status_txt_mid = f"AI Paused (Press '{config.PAUSE_RESUME_KEY.upper()}')"
                     if config.ENABLE_GUI:
                         with gui_data_lock: gui_shared_data["status_text"] = status_txt_mid
@@ -538,7 +538,7 @@ if __name__ == '__main__':
     try:
         while ai_thread.is_alive() and not stop_event.is_set():
             time.sleep(0.5)
-            if config.ENABLE_GUI and gui_tk_root is None and gui_thread and gui_thread.is_alive(): stop_event.set(); break # GUI closed
+            if config.ENABLE_GUI and gui_tk_root is None and gui_thread and gui_thread.is_alive(): stop_event.set(); break 
     except KeyboardInterrupt: logging.info("Ctrl+C in main. Shutdown."); stop_event.set()
     logging.info("Waiting AI thread..."); (pause_event.clear() if pause_event.is_set() else None); ai_thread.join(timeout=10)
     if config.ENABLE_GUI and gui_thread and gui_thread.is_alive():
