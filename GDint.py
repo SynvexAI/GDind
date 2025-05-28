@@ -1,3 +1,4 @@
+# GDint.py
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -543,6 +544,3 @@ if __name__ == '__main__':
     if config.ENABLE_GUI and gui_thread and gui_thread.is_alive():
         logging.info("Waiting GUI thread..."); (gui_tk_root.destroy() if gui_tk_root and gui_tk_root.winfo_exists() else None) ; gui_thread.join(timeout=5)
     key_listener.stop(); logging.info(f"--- {config.PROJECT_NAME} Shutdown Complete ---")
-
-
-#ReNothingg fuck you code! This is full trash! When you start write comments?
