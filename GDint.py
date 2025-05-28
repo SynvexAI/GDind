@@ -1,1101 +1,884 @@
-import time
-import logging
-import os
-import threading
-import collections
-import random
-from typing import Any, Dict, Tuple, List, Optional, Callable
-
-import cv2
-import mss
-import numpy as np
-import pygetwindow as gw
-from pynput.mouse import Button as MouseButton, Controller as MouseController
-import keyboard
-import yaml
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torchvision import transforms
-import matplotlib.pyplot as plt
+import cv2
+import numpy as np
+import mss
+import time
+import random
+from collections import deque, namedtuple
+from pynput.mouse import Button, Controller as MouseController
+from pynput import keyboard as pynput_keyboard
+import logging
+import os
+import datetime
+import threading
+import tkinter as tk
+from tkinter import ttk
+from PIL import Image, ImageTk
+
+try:
+    import pygetwindow
+except ImportError:
+    pygetwindow = None
+try:
+    from pywinauto.application import Application
+except ImportError:
+    Application = None
+
+import GDint_config as config
 
 
-bot_paused = False
-bot_running = True
+gui_tk_root = None
+gui_data_lock = threading.Lock()
+gui_shared_data = {
+    "ai_view": None, "raw_capture_view": None,
+    "q_values": [0.0, 0.0], "action": 0, "epsilon": 0.0,
+    "episode": 0, "step": 0, "current_episode_reward": 0.0,
+    "status_text": "Initializing...", "game_region_info": "N/A",
+    "avg_reward_history": deque(maxlen=100), "avg_loss_history": deque(maxlen=100),
+    "current_loss": 0.0, "total_steps": 0, "fps_info": "AI: 0 | GUI: 0",
+    "is_paused": False
+}
+stop_event = threading.Event()
+pause_event = threading.Event() 
+game_region_display_window = None
 
 
-class ConfigManager:
-    def __init__(self, config_path: str = "config.yaml"):
-        self.config_path = config_path
-        self.config = self._load_config()
+def setup_logging():
+    log_format = '%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s'
+    level = getattr(logging, config.LOG_LEVEL.upper(), logging.INFO)
+    logging.basicConfig(level=level, format=log_format, handlers=[
+        logging.FileHandler(config.LOG_FILE, mode='w'),
+        logging.StreamHandler()
+    ])
+    for logger_name in ['matplotlib', 'PIL', 'pygetwindow', 'pynput']:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+    logging.info(f"Logging for {config.PROJECT_NAME} setup. Level: {config.LOG_LEVEL.upper()}, Device: {config.DEVICE}")
 
-    def _load_config(self) -> Dict[str, Any]:
-        try:
-            with open(self.config_path, 'r') as f:
-                config_data = yaml.safe_load(f)
-            if not config_data:
-                raise ValueError("Config file is empty or invalid.")
-            logging.info(f"Configuration loaded from {self.config_path}")
-            return config_data
-        except FileNotFoundError:
-            logging.error(f"Configuration file not found: {self.config_path}")
-            raise
-        except yaml.YAMLError as e:
-            logging.error(f"Error parsing YAML configuration: {e}")
-            raise
-        except ValueError as e:
-            logging.error(f"Error in configuration data: {e}")
-            raise
+setup_logging()
 
 
-    def get_setting(self, section: str, key: str, default: Optional[Any] = None) -> Any:
-        try:
-            return self.config[section][key]
-        except KeyError:
-            if default is not None:
-                logging.warning(f"Config key '{key}' not found in section '{section}'. Using default: {default}")
-                return default
-            logging.error(f"Config key '{key}' not found in section '{section}' and no default provided.")
-            raise
+Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward', 'done'))
 
-    def get_section(self, section: str) -> Dict[str, Any]:
-        try:
-            return self.config[section]
-        except KeyError:
-            logging.error(f"Config section '{section}' not found.")
-            raise
+class ReplayMemory:
+    def __init__(self, capacity):
+        self.memory = deque([], maxlen=capacity)
+    def push(self, *args): self.memory.append(Transition(*args))
+    def sample(self, batch_size): return random.sample(self.memory, batch_size)
+    def __len__(self): return len(self.memory)
 
 
+class DQN(nn.Module):
+    def __init__(self, h, w, outputs, num_frames_stacked=1, is_grayscale=True):
+        super(DQN, self).__init__()
+        num_input_channels = (1 if is_grayscale else 3) * num_frames_stacked
+        
+        self.conv1 = nn.Conv2d(num_input_channels, 32, kernel_size=8, stride=4, padding=2) 
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1) 
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1) 
+        self.bn3 = nn.BatchNorm2d(64)
 
-def setup_logging(config: ConfigManager):
-    log_config = config.get_section("logging")
-    log_file = log_config.get("log_file", "gdint.log")
-    console_level_str = log_config.get("console_level", "INFO").upper()
-    file_level_str = log_config.get("file_level", "DEBUG").upper()
+        def conv_out_size(size, kernel, stride, padding):
+            return (size - kernel + 2 * padding) // stride + 1
+        
+        final_h = conv_out_size(conv_out_size(conv_out_size(h, 8, 4, 2), 4, 2, 1), 3, 1, 1)
+        final_w = conv_out_size(conv_out_size(conv_out_size(w, 8, 4, 2), 4, 2, 1), 3, 1, 1)
+        linear_input_size = final_h * final_w * 64
+        
+        self.fc1 = nn.Linear(linear_input_size, 512)
+        self.head = nn.Linear(512, outputs)
+        logging.info(f"DQN: Input ({num_input_channels}, H:{h}, W:{w}), ConvOut ({final_h}, {final_w}), LinearIn: {linear_input_size}, Outputs: {outputs}")
 
-    console_level = getattr(logging, console_level_str, logging.INFO)
-    file_level = getattr(logging, file_level_str, logging.DEBUG)
-
-    logging.basicConfig(
-        level=min(console_level, file_level), 
-        format="%(asctime)s [%(levelname)s] %(module)s: %(message)s",
-        handlers=[
-            logging.FileHandler(log_file, mode='w'),
-            logging.StreamHandler() 
-        ]
-    )
-    
-    
-    for handler in logging.getLogger().handlers:
-        if isinstance(handler, logging.FileHandler):
-            handler.setLevel(file_level)
-        elif isinstance(handler, logging.StreamHandler):
-            handler.setLevel(console_level)
-    
-    logging.info("Logging initialized.")
+    def forward(self, x):
+        x = x / 255.0
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.fc1(x))
+        return self.head(x)
 
 
-
-class ScreenCapture:
-    def __init__(self, config: ConfigManager):
-        self.config = config.get_section("capture")
-        self.window_title = self.config.get("window_title", "Geometry Dash")
-        self.target_fps = self.config.get("frame_rate", 30)
-        self.frame_interval = 1.0 / self.target_fps
+class GameEnvironment:
+    def __init__(self):
         self.sct = mss.mss()
-        self.game_window = None
-        self.monitor_info = None 
         self.mouse = MouseController()
+        self.monitor_region = self._get_and_focus_game_window()
 
-    def find_and_focus_window(self) -> bool:
-        windows = gw.getWindowsWithTitle(self.window_title)
-        if not windows:
-            logging.error(f"Window with title '{self.window_title}' not found.")
-            return False
+        if self.monitor_region is None:
+            logging.error(f"Window '{config.WINDOW_TITLE_SUBSTRING}' not found or unmanageable. Using fallback or first monitor.")
+            self.monitor_region = config.FALLBACK_GAME_REGION if config.FALLBACK_GAME_REGION else self.sct.monitors[1]
         
-        self.game_window = windows[0]
-        try:
-            if self.game_window.isMinimized:
-                self.game_window.restore()
-            self.game_window.activate()
-            time.sleep(0.5) 
-            self.monitor_info = {
-                "top": self.game_window.top,
-                "left": self.game_window.left,
-                "width": self.game_window.width,
-                "height": self.game_window.height,
-            }
-            logging.info(f"Found and focused window: {self.game_window.title} at {self.monitor_info}")
-            self._center_cursor()
-            return True
-        except Exception as e: 
-            logging.error(f"Error focusing window or getting dimensions: {e}")
-            self.game_window = None
-            self.monitor_info = None
-            return False
-
-    def _center_cursor(self):
-        if self.game_window and self.monitor_info:
-            center_x = self.monitor_info["left"] + self.monitor_info["width"] // 2
-            center_y = self.monitor_info["top"] + self.monitor_info["height"] // 2
-            self.mouse.position = (center_x, center_y)
-            logging.debug(f"Cursor centered at ({center_x}, {center_y})")
-
-    def get_frame(self) -> Optional[np.ndarray]:
-        if not self.game_window or not self.monitor_info:
-            if not self.find_and_focus_window(): 
-                 logging.warning("Game window not available for capture.")
-                 return None
+        global gui_shared_data
+        with gui_data_lock:
+            gui_shared_data["game_region_info"] = f"Region: L{self.monitor_region['left']}, T{self.monitor_region['top']}, W{self.monitor_region['width']}, H{self.monitor_region['height']}"
+        logging.info(f"GameEnvironment: Screen region set to {self.monitor_region}")
         
+        self.game_over_template = self._load_template(config.GAME_OVER_TEMPLATE_PATH, "Game Over")
+        self.stacked_frames = deque(maxlen=config.NUM_FRAMES_STACKED)
+        
+        if config.SHOW_GAME_REGION_OUTLINE:
+            self._create_region_display_window()
+
+    def _create_region_display_window(self):
+        global game_region_display_window
+        if game_region_display_window: game_region_display_window.destroy()
+
         try:
+            root = tk.Toplevel()
+            root.overrideredirect(True) 
+            root.attributes("-topmost", True)
+            root.attributes("-alpha", 0.3) 
+            root.geometry(f"{self.monitor_region['width']}x{self.monitor_region['height']}+{self.monitor_region['left']}+{self.monitor_region['top']}")
             
-            if self.game_window.top != self.monitor_info["top"] or \
-               self.game_window.left != self.monitor_info["left"] or \
-               self.game_window.width != self.monitor_info["width"] or \
-               self.game_window.height != self.monitor_info["height"]:
-                logging.info("Game window moved or resized. Re-acquiring...")
-                if not self.find_and_focus_window():
-                    return None
+            canvas = tk.Canvas(root, width=self.monitor_region['width'], height=self.monitor_region['height'], bg='gray', highlightthickness=0) 
+            canvas.pack()
+            canvas.create_rectangle(
+                config.GAME_REGION_OUTLINE_THICKNESS // 2,
+                config.GAME_REGION_OUTLINE_THICKNESS // 2,
+                self.monitor_region['width'] - config.GAME_REGION_OUTLINE_THICKNESS // 2,
+                self.monitor_region['height'] - config.GAME_REGION_OUTLINE_THICKNESS // 2,
+                outline=config.GAME_REGION_OUTLINE_BORDER_COLOR,
+                width=config.GAME_REGION_OUTLINE_THICKNESS
+            )
+            
+            if os.name == 'nt':
+                try:
+                    import win32gui
+                    import win32con
+                    hwnd = root.winfo_id()
+                    styles = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+                    styles |= win32con.WS_EX_LAYERED | win32con.WS_EX_TRANSPARENT
+                    win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, styles)
+                    
+                    
+                except ImportError:
+                    logging.warning("pywin32 not installed, cannot make region outline click-through on Windows.")
+                except Exception as e:
+                    logging.warning(f"Error making region outline click-through: {e}")
 
-            img = self.sct.grab(self.monitor_info)
-            frame = np.array(img)
-            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR) 
-            return frame_bgr
+            game_region_display_window = root
+            logging.info("Game region outline display created.")
         except Exception as e:
-            logging.error(f"Error during screen capture: {e}")
+            logging.error(f"Failed to create game region display window: {e}")
+
+
+    def _load_template(self, path, name):
+        if not path or not os.path.exists(path):
+            logging.warning(f"{name} template not specified or not found: {path}")
+            return None
+        template = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+        if template is None:
+            logging.error(f"Failed to load {name} template from {path}")
+            return None
+        
+        if config.GRAYSCALE:
+            if len(template.shape) == 3 and template.shape[2] == 4: 
+                template = cv2.cvtColor(template, cv2.COLOR_BGRA2GRAY)
+            elif len(template.shape) == 3: 
+                template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+        elif len(template.shape) == 3 and template.shape[2] == 4: 
+             template = cv2.cvtColor(template, cv2.COLOR_BGRA2BGR)
+        
+        logging.info(f"Loaded {name} template: {path}, Shape: {template.shape}, Grayscale config: {config.GRAYSCALE}")
+        return template
+
+    def _get_and_focus_game_window(self):
+        if not pygetwindow: return None
+        try:
+            gd_windows = pygetwindow.getWindowsWithTitle(config.WINDOW_TITLE_SUBSTRING)
+            if not gd_windows: return None
             
-            self.game_window = None 
-            self.monitor_info = None
+            gd_window = gd_windows[0]
+            if gd_window.isMinimized: gd_window.restore()
+            
+            
+            if Application and os.name == 'nt':
+                try:
+                    app = Application().connect(handle=gd_window._hWnd, timeout=5)
+                    app_window = app.window(handle=gd_window._hWnd)
+                    if app_window.exists() and app_window.is_visible():
+                        app_window.set_focus()
+                        logging.info(f"Focused window '{gd_window.title}' via pywinauto.")
+                    else: gd_window.activate() 
+                except Exception: gd_window.activate()
+            else: gd_window.activate()
+            time.sleep(0.2) 
+
+            return {"top": gd_window.top, "left": gd_window.left, 
+                    "width": gd_window.width, "height": gd_window.height,
+                    "monitor": 1} 
+        except Exception as e:
+            logging.error(f"Error in _get_and_focus_game_window: {e}")
             return None
 
-    def get_window_dimensions(self) -> Optional[Tuple[int, int]]:
-        if self.monitor_info:
-            return self.monitor_info["width"], self.monitor_info["height"]
-        return None
+    def _capture_frame_raw_bgr(self):
+        try:
+            sct_img = self.sct.grab(self.monitor_region)
+            return cv2.cvtColor(np.array(sct_img), cv2.COLOR_BGRA2BGR)
+        except mss.exception.ScreenShotError as e:
+            logging.error(f"Screen capture error: {e}. Retrying...")
+            time.sleep(0.05)
+            return self._capture_frame_raw_bgr()
 
-
-
-class DuelingCNN(nn.Module):
-    def __init__(self, input_shape: Tuple[int, int, int], num_actions: int):
-        super(DuelingCNN, self).__init__()
-        c, h, w = input_shape 
-
-        self.conv1 = nn.Conv2d(c, 32, kernel_size=8, stride=4)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
-        
-        
-        conv_out_size = self._get_conv_out_size(input_shape)
-
-        
-        self.advantage_fc1 = nn.Linear(conv_out_size, 512)
-        self.advantage_fc2 = nn.Linear(512, num_actions)
-
-        
-        self.value_fc1 = nn.Linear(conv_out_size, 512)
-        self.value_fc2 = nn.Linear(512, 1)
-
-    def _get_conv_out_size(self, shape: Tuple[int, int, int]) -> int:
-        o = self.conv1(torch.zeros(1, *shape))
-        o = self.conv2(o)
-        o = self.conv3(o)
-        return int(np.prod(o.size()))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = x.view(x.size(0), -1)  
-
-        adv = F.relu(self.advantage_fc1(x))
-        adv = self.advantage_fc2(adv)
-
-        val = F.relu(self.value_fc1(x))
-        val = self.value_fc2(val)
-        
-        
-        
-        return val + adv - adv.mean(dim=1, keepdim=True)
-
-class ReplayBuffer:
-    def __init__(self, capacity: int, frame_stack_size: int, image_dims: Tuple[int, int]):
-        self.capacity = capacity
-        self.frame_stack_size = frame_stack_size
-        self.image_height, self.image_width = image_dims
-        
-        
-        self.memory = collections.deque(maxlen=capacity)
-        self.frame_dtype = np.uint8 
-        
-        
-        
-        
-
-    def push(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool):
-        
-        self.memory.append((state, action, reward, next_state, done))
-
-    def sample(self, batch_size: int) -> Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]]:
-        if len(self.memory) < batch_size or len(self.memory) < self.frame_stack_size:
-            return None
-
-        indices = random.sample(range(self.frame_stack_size -1, len(self.memory)), batch_size)
-        
-        batch_states = []
-        batch_actions = []
-        batch_rewards = []
-        batch_next_states = []
-        batch_dones = []
-
-        for i in indices:
-            
-            current_state_stack = self._get_stacked_frames(i)
-            
-            
-            
-            
-            
-            
-            
-            
-            state_tuple = self.memory[i]
-            action, reward, next_single_frame, done = state_tuple[1], state_tuple[2], state_tuple[3], state_tuple[4]
-
-            
-            
-            
-            
-            if done:
-                
-                next_state_stack = np.zeros_like(current_state_stack)
-            else:
-                
-                
-                next_state_stack = self._get_stacked_frames_for_next_state(i)
-
-
-            batch_states.append(current_state_stack)
-            batch_actions.append(action)
-            batch_rewards.append(reward)
-            batch_next_states.append(next_state_stack)
-            batch_dones.append(done)
-
-        
-        
-        states_tensor = torch.from_numpy(np.array(batch_states)).float() / 255.0
-        actions_tensor = torch.tensor(batch_actions, dtype=torch.int64).unsqueeze(1) 
-        rewards_tensor = torch.tensor(batch_rewards, dtype=torch.float32).unsqueeze(1) 
-        next_states_tensor = torch.from_numpy(np.array(batch_next_states)).float() / 255.0
-        dones_tensor = torch.tensor(batch_dones, dtype=torch.bool).unsqueeze(1) 
-        
-        return states_tensor, actions_tensor, rewards_tensor, next_states_tensor, dones_tensor
-
-    def _get_stacked_frames(self, index: int) -> np.ndarray:
-        
-        
-        
-        frames = []
-        for i in range(self.frame_stack_size):
-            
-            frame_index = index - (self.frame_stack_size - 1) + i
-            if frame_index < 0: 
-                frames.append(np.zeros((self.image_height, self.image_width), dtype=self.frame_dtype))
-            else:
-                
-                
-                
-                
-                frames.append(self.memory[frame_index][0]) 
-        
-        
-        return np.stack(frames, axis=0)
-
-    def _get_stacked_frames_for_next_state(self, current_index: int) -> np.ndarray:
-        
-        
-        
-        
-        frames = []
-        
-        frames.append(self.memory[current_index][3]) 
-
-        
-        
-        for i in range(1, self.frame_stack_size):
-            frame_lookback_index = current_index - (i - 1)
-            if frame_lookback_index < 0:
-                frames.insert(0, np.zeros((self.image_height, self.image_width), dtype=self.frame_dtype))
-            else:
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-
-                
-                
-                idx_for_prev_frame = current_index - i + 1 
-                if idx_for_prev_frame < 0: 
-                     frames.insert(0, np.zeros((self.image_height, self.image_width), dtype=self.frame_dtype))
-                else:
-                     frames.insert(0, self.memory[idx_for_prev_frame][0]) 
-
-        return np.stack(frames, axis=0)
-
-
-    def __len__(self) -> int:
-        return len(self.memory)
-
-class DQNAgent:
-    def __init__(self, model_config: Dict[str, Any], device: torch.device):
-        self.device = device
-        self.num_actions = model_config["num_actions"]
-        self.gamma = model_config["gamma"]
-        self.epsilon = model_config["epsilon_start"]
-        self.epsilon_start = model_config["epsilon_start"]
-        self.epsilon_end = model_config["epsilon_end"]
-        self.epsilon_decay = model_config["epsilon_decay"]
-        self.target_update_frequency = model_config["target_update_frequency"]
-        self.save_path = model_config["save_path"]
-        
-        self.image_height = model_config["image_height"]
-        self.image_width = model_config["image_width"]
-        self.frame_stack = model_config["frame_stack"] 
-
-        input_shape = (self.frame_stack, self.image_height, self.image_width)
-
-        self.policy_net = DuelingCNN(input_shape, self.num_actions).to(self.device)
-        self.target_net = DuelingCNN(input_shape, self.num_actions).to(self.device)
-        self.target_net.load_state_dict(self.policy_net.state_dict())
-        self.target_net.eval() 
-
-        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=model_config["learning_rate"], amsgrad=True)
-        self.total_steps = 0
-        
-        self.load_model(self.save_path)
-
-
-    def select_action(self, state_stack: np.ndarray, is_eval: bool = False) -> int:
-        self.total_steps += 1
-        
-        self.epsilon = self.epsilon_end + (self.epsilon_start - self.epsilon_end) * \
-                       np.exp(-1. * self.total_steps / self.epsilon_decay)
-        self.epsilon = max(self.epsilon_end, self.epsilon) 
-
-        if is_eval or random.random() > self.epsilon:
-            with torch.no_grad():
-                
-                
-                state_tensor = torch.from_numpy(state_stack).unsqueeze(0).float().to(self.device) / 255.0
-                q_values = self.policy_net(state_tensor)
-                return q_values.max(1)[1].item() 
+    def _preprocess_frame_for_ai(self, frame_bgr):
+        if config.GRAYSCALE:
+            frame = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         else:
-            return random.randrange(self.num_actions)
+            frame = frame_bgr
+        
+        frame_resized = cv2.resize(frame, (config.FRAME_WIDTH, config.FRAME_HEIGHT), interpolation=cv2.INTER_AREA)
+        return frame_resized.astype(np.uint8)
 
-    def train_step(self, replay_buffer: ReplayBuffer, batch_size: int) -> Optional[float]:
-        if len(replay_buffer) < model_config.get("min_replay_buffer_size", batch_size) :
+    def _stack_frames_for_ai(self, processed_frame_for_ai):
+        if config.GRAYSCALE:
+            frame_chw = np.expand_dims(processed_frame_for_ai, axis=0)
+        else:
+            frame_chw = np.transpose(processed_frame_for_ai, (2, 0, 1))
+
+        if not self.stacked_frames:
+            for _ in range(config.NUM_FRAMES_STACKED):
+                self.stacked_frames.append(frame_chw)
+        else:
+            self.stacked_frames.append(frame_chw)
+        
+        stacked_state_tensor_data = np.concatenate(list(self.stacked_frames), axis=0)
+        return torch.from_numpy(stacked_state_tensor_data).unsqueeze(0).to(config.DEVICE).float()
+
+    def reset(self):
+        self.stacked_frames.clear()
+        raw_frame_bgr = self._capture_frame_raw_bgr()
+        processed_frame = self._preprocess_frame_for_ai(raw_frame_bgr)
+        
+        if config.GRAYSCALE: frame_chw = np.expand_dims(processed_frame, axis=0)
+        else: frame_chw = np.transpose(processed_frame, (2,0,1))
+        for _ in range(config.NUM_FRAMES_STACKED): self.stacked_frames.append(frame_chw)
+            
+        initial_stacked_state = torch.from_numpy(np.concatenate(list(self.stacked_frames), axis=0)).unsqueeze(0).to(config.DEVICE).float()
+        return initial_stacked_state, raw_frame_bgr
+
+    def step(self, action_value):
+        if action_value == 1: 
+            self.mouse.press(Button.left)
+            time.sleep(config.JUMP_DURATION)
+            self.mouse.release(Button.left)
+        
+        if config.ACTION_DELAY > 0: time.sleep(config.ACTION_DELAY)
+
+        raw_next_frame_bgr = self._capture_frame_raw_bgr()
+        processed_next_frame_for_ai = self._preprocess_frame_for_ai(raw_next_frame_bgr)
+        next_state_tensor = self._stack_frames_for_ai(processed_next_frame_for_ai)
+        reward, done = self._get_reward_and_done(raw_next_frame_bgr)
+
+        if config.ENABLE_GUI:
+            with gui_data_lock:
+                if config.GRAYSCALE:
+                    gui_shared_data["ai_view"] = Image.fromarray(processed_next_frame_for_ai, 'L')
+                else: 
+                    gui_shared_data["ai_view"] = Image.fromarray(cv2.cvtColor(processed_next_frame_for_ai, cv2.COLOR_BGR2RGB))
+                if config.GUI_SHOW_RAW_CAPTURE:
+                     gui_shared_data["raw_capture_view"] = Image.fromarray(cv2.cvtColor(raw_next_frame_bgr, cv2.COLOR_BGR2RGB))
+        
+        return next_state_tensor, reward, done, raw_next_frame_bgr
+
+    def _match_template_cv(self, frame_area_to_search, template_img, threshold):
+        if template_img is None: return False, 0.0
+        if frame_area_to_search.shape[0] < template_img.shape[0] or \
+           frame_area_to_search.shape[1] < template_img.shape[1]:
+            return False, 0.0 
+        
+        result = cv2.matchTemplate(frame_area_to_search, template_img, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, _ = cv2.minMaxLoc(result)
+        return max_val >= threshold, max_val
+
+    def _get_reward_and_done(self, current_raw_frame_bgr):
+        done = False
+        reward = config.REWARD_ALIVE
+
+        frame_for_detection = current_raw_frame_bgr
+        if config.GRAYSCALE and self.game_over_template is not None and len(self.game_over_template.shape)==2:
+            frame_for_detection = cv2.cvtColor(current_raw_frame_bgr, cv2.COLOR_BGR2GRAY)
+        
+        if self.game_over_template is not None:
+            search_area_go = frame_for_detection
+            if config.GAME_OVER_SEARCH_REGION:
+                x, y, w, h = config.GAME_OVER_SEARCH_REGION
+                max_h, max_w = search_area_go.shape[:2]
+                x, y = max(0, x), max(0, y)
+                w, h = min(w, max_w - x), min(h, max_h - y)
+                if w > 0 and h > 0: search_area_go = search_area_go[y:y+h, x:x+w]
+            
+            is_game_over, match_val = self._match_template_cv(search_area_go, self.game_over_template, config.GAME_OVER_DETECTION_THRESHOLD)
+            if is_game_over:
+                logging.debug(f"Game Over detected (match: {match_val:.2f}).")
+                done = True
+                reward = config.REWARD_DEATH
+                if config.SAVE_FRAMES_ON_DEATH:
+                    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    cv2.imwrite(f"death_frame_{ts}.png", current_raw_frame_bgr)
+                return reward, done 
+        
+        
+        if not done and config.REWARD_PROGRESS_FACTOR != 0:
+            
+            
+            
+            pass
+
+        return reward, done
+
+
+class Agent:
+    def __init__(self, num_actions, sample_env_for_shape):
+        self.num_actions = num_actions
+        
+        
+        self.policy_net = DQN(config.FRAME_HEIGHT, config.FRAME_WIDTH, num_actions, 
+                              config.NUM_FRAMES_STACKED, config.GRAYSCALE).to(config.DEVICE)
+        self.target_net = DQN(config.FRAME_HEIGHT, config.FRAME_WIDTH, num_actions,
+                              config.NUM_FRAMES_STACKED, config.GRAYSCALE).to(config.DEVICE)
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+        self.target_net.eval()
+
+        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=config.LEARNING_RATE, amsgrad=True)
+        self.memory = ReplayMemory(config.REPLAY_MEMORY_SIZE)
+        self.total_steps_done_in_training = 0
+
+    def select_action(self, state_tensor):
+        self.total_steps_done_in_training += 1
+        current_epsilon = config.EPSILON_END + \
+                          (config.EPSILON_START - config.EPSILON_END) * \
+                          np.exp(-1. * self.total_steps_done_in_training / config.EPSILON_DECAY_FRAMES)
+        
+        action_val = 0
+        q_values_list = [0.0] * self.num_actions
+
+        if random.random() > current_epsilon:
+            with torch.no_grad():
+                q_values_tensor = self.policy_net(state_tensor)
+                action_val = q_values_tensor.max(1)[1].item()
+                q_values_list = q_values_tensor.cpu().squeeze().tolist()
+                if not isinstance(q_values_list, list): q_values_list = [q_values_list] 
+        else:
+            action_val = random.randrange(self.num_actions)
+        
+        if config.ENABLE_GUI:
+            with gui_data_lock:
+                gui_shared_data["q_values"] = q_values_list
+                gui_shared_data["action"] = action_val
+                gui_shared_data["epsilon"] = current_epsilon
+        
+        return torch.tensor([[action_val]], device=config.DEVICE, dtype=torch.long)
+
+    def optimize_model(self):
+        if len(self.memory) < config.BATCH_SIZE or self.total_steps_done_in_training < config.LEARN_START_STEPS:
             return None
+        
+        transitions = self.memory.sample(config.BATCH_SIZE)
+        batch = Transition(*zip(*transitions))
 
-        batch = replay_buffer.sample(batch_size)
-        if batch is None:
-            return None
+        non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), 
+                                     device=config.DEVICE, dtype=torch.bool)
         
-        states, actions, rewards, next_states, dones = batch
-        
-        states = states.to(self.device)
-        actions = actions.to(self.device)
-        rewards = rewards.to(self.device)
-        next_states = next_states.to(self.device)
-        dones = dones.to(self.device)
+        non_final_next_states_list = [s for s in batch.next_state if s is not None]
+        if not non_final_next_states_list: 
+             non_final_next_states = None
+        else:
+            non_final_next_states = torch.cat(non_final_next_states_list)
 
-        
-        
-        current_q_values = self.policy_net(states).gather(1, actions)
+        state_batch = torch.cat(batch.state)
+        action_batch = torch.cat(batch.action)
+        reward_batch = torch.cat(batch.reward)
 
+        state_action_values = self.policy_net(state_batch).gather(1, action_batch)
+        next_state_values = torch.zeros(config.BATCH_SIZE, device=config.DEVICE)
         
+        if non_final_next_states is not None and non_final_next_states.size(0) > 0:
+            with torch.no_grad():
+                next_state_values[non_final_mask] = self.target_net(non_final_next_states).max(1)[0]
         
-        
-        
-        with torch.no_grad():
-            next_policy_actions = self.policy_net(next_states).max(1)[1].unsqueeze(1)
-            next_target_q_values = self.target_net(next_states).gather(1, next_policy_actions)
-        
-        
-        next_target_q_values[dones] = 0.0
-        
-        
-        expected_q_values = rewards + (self.gamma * next_target_q_values)
-
-        
-        loss = F.smooth_l1_loss(current_q_values, expected_q_values)
+        expected_state_action_values = (next_state_values * config.GAMMA) + reward_batch
+        criterion = nn.SmoothL1Loss()
+        loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
         self.optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0) 
         self.optimizer.step()
-
         
-        if self.total_steps % self.target_update_frequency == 0:
-            self.target_net.load_state_dict(self.policy_net.state_dict())
-            logging.info("Updated target network.")
-
+        if config.ENABLE_GUI:
+            with gui_data_lock: gui_shared_data["current_loss"] = loss.item()
         return loss.item()
 
-    def save_model(self, path: Optional[str] = None):
-        save_to = path if path else self.save_path
+    def update_target_net(self):
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+
+    def save_model(self, path=config.MODEL_SAVE_PATH):
         try:
             torch.save({
                 'policy_net_state_dict': self.policy_net.state_dict(),
                 'target_net_state_dict': self.target_net.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
-                'total_steps': self.total_steps,
-                'epsilon': self.epsilon
-            }, save_to)
-            logging.info(f"Model saved to {save_to}")
+                'total_steps_done': self.total_steps_done_in_training,
+            }, path)
+            logging.info(f"Model saved: {path}")
+        except Exception as e: logging.error(f"Error saving model: {e}")
+
+    def load_model(self, path=config.MODEL_SAVE_PATH):
+        if not os.path.exists(path): return False
+        try:
+            checkpoint = torch.load(path, map_location=config.DEVICE)
+            self.policy_net.load_state_dict(checkpoint['policy_net_state_dict'])
+            self.target_net.load_state_dict(checkpoint['target_net_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.total_steps_done_in_training = checkpoint.get('total_steps_done', 0)
+            
+            self.policy_net.to(config.DEVICE)
+            self.target_net.to(config.DEVICE)
+            self.target_net.eval()
+            for state_val in self.optimizer.state.values():
+                for k, v_val in state_val.items():
+                    if isinstance(v_val, torch.Tensor): state_val[k] = v_val.to(config.DEVICE)
+            logging.info(f"Model loaded: {path}, Steps: {self.total_steps_done_in_training}")
+            return True
         except Exception as e:
-            logging.error(f"Error saving model to {save_to}: {e}")
-
-    def load_model(self, path: Optional[str] = None):
-        load_from = path if path else self.save_path
-        if os.path.exists(load_from):
-            try:
-                checkpoint = torch.load(load_from, map_location=self.device)
-                self.policy_net.load_state_dict(checkpoint['policy_net_state_dict'])
-                self.target_net.load_state_dict(checkpoint['target_net_state_dict'])
-                self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-                self.total_steps = checkpoint.get('total_steps', 0) 
-                self.epsilon = checkpoint.get('epsilon', self.epsilon_start) 
-                self.policy_net.train() 
-                self.target_net.eval()  
-                logging.info(f"Model loaded from {load_from}. Total steps: {self.total_steps}, Epsilon: {self.epsilon:.4f}")
-            except Exception as e:
-                logging.error(f"Error loading model from {load_from}: {e}. Starting with a fresh model.")
-        else:
-            logging.info(f"No model found at {load_from}. Starting with a fresh model.")
-
-    @staticmethod
-    def preprocess_frame(frame: np.ndarray, height: int, width: int) -> np.ndarray:
-        
-        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        
-        frame_resized = cv2.resize(frame_gray, (width, height), interpolation=cv2.INTER_AREA)
-        
-        return frame_resized
-
-
-
-class GameController:
-    def __init__(self, config_manager: ConfigManager):
-        self.mouse = MouseController()
-        self.game_config = config_manager.get_section("game")
-        self.death_config = config_manager.get_section("death_detection")
-        self.restart_cooldown_s = self.game_config.get("restart_cooldown_ms", 1000) / 1000.0
-        self.last_death_time = 0
-        
-        self.death_roi_config = self.death_config.get("death_detection_roi", {})
-        self.use_roi_death_detection = self.death_roi_config.get("use", False) if self.death_roi_config else False
-        
-        if self.use_roi_death_detection and self.death_roi_config:
-            self.roi_x_ratio = self.death_roi_config.get("x_start_ratio", 0.0)
-            self.roi_y_ratio = self.death_roi_config.get("y_start_ratio", 0.0)
-            self.roi_w_ratio = self.death_roi_config.get("width_ratio", 0.1)
-            self.roi_h_ratio = self.death_roi_config.get("height_ratio", 0.1)
-            
-            
-            
-            
-        
-        self.previous_frame_gray_simple = None 
-
-    def jump(self):
-        self.mouse.press(MouseButton.left)
-        time.sleep(0.05) 
-        self.mouse.release(MouseButton.left)
-        logging.debug("Action: Jump")
-
-    def no_op(self):
-        logging.debug("Action: No-op")
-        pass
-
-    def _is_player_dead_roi(self, current_frame_bgr: np.ndarray) -> bool:
-        """ Rudimentary death detection based on ROI color or significant change. """
-        if not self.use_roi_death_detection or not self.death_roi_config:
+            logging.error(f"Error loading model {path}: {e}")
             return False
 
-        h, w, _ = current_frame_bgr.shape
-        roi_x = int(w * self.roi_x_ratio)
-        roi_y = int(h * self.roi_y_ratio)
-        roi_w = int(w * self.roi_w_ratio)
-        roi_h = int(h * self.roi_h_ratio)
+
+class AppGUI:
+    def __init__(self, root_tk):
+        self.root = root_tk
+        self.root.title(f"{config.PROJECT_NAME} Dashboard")
+        self.root.protocol("WM_DELETE_WINDOW", self._on_gui_closing)
+        self.root.geometry("900x650") 
+
+        style = ttk.Style()
+        style.theme_use('clam')
+
+        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
 
         
-        roi_x = max(0, roi_x)
-        roi_y = max(0, roi_y)
-        roi_w = min(roi_w, w - roi_x)
-        roi_h = min(roi_h, h - roi_y)
+        vision_panel = ttk.Frame(main_frame)
+        vision_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
-        if roi_w <=0 or roi_h <=0:
-            logging.warning("Death detection ROI has zero or negative dimensions.")
-            return False
+        self.ai_view_frame = ttk.LabelFrame(vision_panel, text="AI Processed View")
+        self.ai_view_frame.pack(fill=tk.BOTH, expand=True, pady=(0,5))
+        self.ai_view_label = ttk.Label(self.ai_view_frame)
+        self.ai_view_label.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
+        self._set_placeholder_image(self.ai_view_label, 
+                                    config.FRAME_WIDTH * config.GUI_AI_VIEW_DISPLAY_SCALE, 
+                                    config.FRAME_HEIGHT * config.GUI_AI_VIEW_DISPLAY_SCALE, "AI View")
 
-        roi_frame = current_frame_bgr[roi_y:roi_y+roi_h, roi_x:roi_x+roi_w]
-
-        
-        
-        
-        
-        
-        
-        
-
-        
-        
-        gray_roi = cv2.cvtColor(roi_frame, cv2.COLOR_BGR2GRAY)
-        std_dev = np.std(gray_roi)
-        
-        if std_dev < 10: 
-             logging.debug(f"Death detected: ROI very uniform (std_dev: {std_dev:.2f}).")
-             return True
-        
-        return False
-    
-    def _is_player_dead_simple_change(self, current_frame_bgr: np.ndarray) -> bool:
-        """ Very basic: checks for massive screen change, indicating potential death/reset. """
-        
-        
-        
-        
-        gray = cv2.cvtColor(current_frame_bgr, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (21, 21), 0)
-
-        if self.previous_frame_gray_simple is None:
-            self.previous_frame_gray_simple = gray
-            return False
-
-        frame_delta = cv2.absdiff(self.previous_frame_gray_simple, gray)
-        thresh = cv2.threshold(frame_delta, 25, 255, cv2.THRESH_BINARY)[1] 
-        
-        
-        changed_pixels = np.sum(thresh > 0)
-        total_pixels = thresh.shape[0] * thresh.shape[1]
-        change_percentage = (changed_pixels / total_pixels) * 100
-
-        self.previous_frame_gray_simple = gray
-
-        
-        
-        
-        
-        
-        if change_percentage > 70: 
-            logging.debug(f"Potential death/reset detected by simple screen change ({change_percentage:.2f}%).")
-            return True
-        return False
-
-
-    def is_player_dead(self, current_frame_bgr: np.ndarray) -> bool:
-        
-        if self.use_roi_death_detection and self._is_player_dead_roi(current_frame_bgr):
-            return True
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        return False 
-
-    def restart_level(self) -> bool:
-        current_time = time.time()
-        if current_time - self.last_death_time < self.restart_cooldown_s:
-            return False 
-
-        
-        
-        
-        
-        logging.info("Attempting to restart level.")
-        self.mouse.press(MouseButton.left)
-        time.sleep(0.05)
-        self.mouse.release(MouseButton.left)
-        self.last_death_time = current_time
-        self.previous_frame_gray_simple = None 
-        return True
-
-
-
-class Visualizer:
-    def __init__(self, config_manager: ConfigManager):
-        self.viz_config = config_manager.get_section("visualization")
-        self.show_ai_vision = self.viz_config.get("show_ai_vision", True)
-        self.show_training_plot = self.viz_config.get("show_training_plot", True)
-        self.plot_update_freq = self.viz_config.get("plot_update_frequency_episodes", 1)
-        self.stats_update_freq_s = self.viz_config.get("stats_update_frequency_seconds", 1)
-        
-        self.loss_history = []
-        self.reward_history = [] 
-        self.accuracy_history = [] 
-        self.episode_count_for_plot = 0
-        self.last_stats_update_time = time.time()
-
-        if self.show_training_plot:
-            plt.ion() 
-            self.fig, self.axs = plt.subplots(2, 1, figsize=(8, 6)) 
-            self.fig.canvas.manager.set_window_title("GDint Training Progress")
-
-
-    def display_ai_vision(self, frame: np.ndarray, activation_map: Optional[np.ndarray] = None):
-        if not self.show_ai_vision:
-            return
-
-        display_frame = frame.copy()
-        if activation_map is not None:
+        if config.GUI_SHOW_RAW_CAPTURE:
+            self.raw_view_frame = ttk.LabelFrame(vision_panel, text="Raw Game Capture")
+            self.raw_view_frame.pack(fill=tk.BOTH, expand=True)
+            self.raw_view_label = ttk.Label(self.raw_view_frame)
+            self.raw_view_label.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
             
-            
-            
-            
-            pass 
+            self._set_placeholder_image(self.raw_view_label, 
+                                        int(800 * config.GUI_RAW_CAPTURE_DISPLAY_SCALE), 
+                                        int(600 * config.GUI_RAW_CAPTURE_DISPLAY_SCALE), "Raw Capture")
 
-        cv2.imshow("GDint AI Vision", display_frame)
+
         
-
-    def update_training_graph(self, episode: int, loss: Optional[float], total_reward: float):
-        if not self.show_training_plot:
-            return
-
-        if loss is not None:
-            self.loss_history.append(loss)
-        self.reward_history.append(total_reward)
+        info_panel = ttk.Frame(main_frame)
+        info_panel.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, 0))
         
-
-        self.episode_count_for_plot +=1
-
-        if self.episode_count_for_plot % self.plot_update_freq == 0:
-            self.axs[0].clear()
-            self.axs[0].plot(self.loss_history, label="Loss")
-            self.axs[0].set_title("Training Loss")
-            self.axs[0].set_xlabel("Training Steps (or Batches)")
-            self.axs[0].set_ylabel("Loss")
-            self.axs[0].legend()
-
-            self.axs[1].clear()
-            self.axs[1].plot(self.reward_history, label="Total Reward per Episode")
-            self.axs[1].set_title("Episode Rewards")
-            self.axs[1].set_xlabel("Episode")
-            self.axs[1].set_ylabel("Total Reward")
-            
-            if len(self.reward_history) >= 10:
-                moving_avg = np.convolve(self.reward_history, np.ones(10)/10, mode='valid')
-                self.axs[1].plot(np.arange(9, len(self.reward_history)), moving_avg, label="10-ep Moving Avg")
-            self.axs[1].legend()
-            
-            plt.tight_layout()
-            plt.pause(0.01) 
-
-    def display_stats(self, stats: Dict[str, Any]):
+        stats_frame = ttk.LabelFrame(info_panel, text="AI Statistics")
+        stats_frame.pack(fill=tk.X, pady=(0,10))
         
-        current_time = time.time()
-        if current_time - self.last_stats_update_time > self.stats_update_freq_s:
-            log_message_parts = []
-            for key, value in stats.items():
-                if isinstance(value, float):
-                    log_message_parts.append(f"{key}: {value:.2f}")
-                else:
-                    log_message_parts.append(f"{key}: {value}")
-            logging.info(f"Stats: {', '.join(log_message_parts)}")
-            self.last_stats_update_time = current_time
+        self.labels = {}
+        info_order = [
+            ("Episode", "Episode: 0 / 0"), ("Step", "Step: 0 / 0"),
+            ("Total Steps", "Total Steps: 0"), ("Ep. Reward", "Ep. Reward: 0.00"),
+            ("Avg Reward (100)", "Avg Reward (100): N/A"), ("Epsilon", "Epsilon: 1.0000"),
+            ("Q-Values", "Q-Values: [0.00, 0.00]"),("Action", "Action: N/A"),
+            ("Loss", "Loss: N/A"), ("Avg Loss (100)", "Avg Loss (100): N/A"),
+            ("FPS", "FPS AI:0 | GUI:0"), ("Game Region", "Region: N/A")
+        ]
+        for key, text_val in info_order:
+            self.labels[key] = ttk.Label(stats_frame, text=text_val, anchor="w")
+            self.labels[key].pack(fill=tk.X, padx=5, pady=1)
+
+        status_frame = ttk.LabelFrame(info_panel, text="Status")
+        status_frame.pack(fill=tk.X, pady=(0,10))
+        self.status_label = ttk.Label(status_frame, text="Initializing...", wraplength=280, justify=tk.LEFT)
+        self.status_label.pack(fill=tk.X, padx=5, pady=5)
+
+        control_frame = ttk.LabelFrame(info_panel, text="Controls")
+        control_frame.pack(fill=tk.X)
+        self.pause_button = ttk.Button(control_frame, text="PAUSE (P)", command=self._toggle_pause)
+        self.pause_button.pack(fill=tk.X, padx=5, pady=5)
+        self.stop_button = ttk.Button(control_frame, text="STOP AI", command=self._on_stop_button)
+        self.stop_button.pack(fill=tk.X, padx=5, pady=5)
+        
+        self.last_gui_update_time = time.perf_counter()
+        self.gui_fps_counter = 0
+        self.update_gui_info()
+
+
+    def _set_placeholder_image(self, label_widget, width, height, text):
+        placeholder = Image.new('RGB', (int(width), int(height)), color='gray')
+        
+        
+        
+        
+        photo = ImageTk.PhotoImage(image=placeholder)
+        label_widget.configure(image=photo)
+        label_widget.image = photo 
+
+    def _on_gui_closing(self):
+        logging.info("GUI window closed by user.")
+        stop_event.set()
+        if pause_event.is_set(): pause_event.clear() 
+        self.root.destroy()
+        global gui_tk_root
+        gui_tk_root = None 
+
+    def _toggle_pause(self):
+        if pause_event.is_set(): 
+            pause_event.clear()
+            self.pause_button.config(text=f"PAUSE ({config.PAUSE_RESUME_KEY.upper()})")
+            with gui_data_lock: gui_shared_data["is_paused"] = False
+        else: 
+            pause_event.set()
+            self.pause_button.config(text=f"RESUME ({config.PAUSE_RESUME_KEY.upper()})")
+            with gui_data_lock: gui_shared_data["is_paused"] = True
             
+    def _on_stop_button(self):
+        logging.info("STOP AI button pressed from GUI.")
+        stop_event.set()
+        if pause_event.is_set(): pause_event.clear()
+        self.status_label.config(text="Stop signal sent. AI will halt.")
+        self.stop_button.config(state=tk.DISABLED)
+        self.pause_button.config(state=tk.DISABLED)
+
+    def update_gui_info(self):
+        if not self.root or not self.root.winfo_exists(): return
+
+        with gui_data_lock:
+            data = gui_shared_data.copy()
+            ai_view_img = data["ai_view"]
+            raw_view_img = data["raw_capture_view"]
+
+        if ai_view_img:
+            w, h = ai_view_img.width, ai_view_img.height
+            disp_w = int(w * config.GUI_AI_VIEW_DISPLAY_SCALE)
+            disp_h = int(h * config.GUI_AI_VIEW_DISPLAY_SCALE)
+            img_resized = ai_view_img.resize((disp_w, disp_h), Image.Resampling.NEAREST) 
+            self.ai_view_photo = ImageTk.PhotoImage(image=img_resized)
+            self.ai_view_label.configure(image=self.ai_view_photo)
+            self.ai_view_label.image = self.ai_view_photo
+
+        if config.GUI_SHOW_RAW_CAPTURE and raw_view_img:
+            w, h = raw_view_img.width, raw_view_img.height
+            disp_w = int(w * config.GUI_RAW_CAPTURE_DISPLAY_SCALE)
+            disp_h = int(h * config.GUI_RAW_CAPTURE_DISPLAY_SCALE)
+            img_resized = raw_view_img.resize((disp_w, disp_h), Image.Resampling.LANCZOS)
+            self.raw_view_photo = ImageTk.PhotoImage(image=img_resized)
+            self.raw_view_label.configure(image=self.raw_view_photo)
+            self.raw_view_label.image = self.raw_view_photo
             
-            if self.show_ai_vision and cv2.getWindowProperty("GDint AI Vision", cv2.WND_PROP_VISIBLE) >=1:
-                
-                
-                pass
-                
-    def close(self):
-        if self.show_ai_vision:
-            cv2.destroyWindow("GDint AI Vision")
-        if self.show_training_plot:
-            plt.ioff()
-            plt.close(self.fig)
+        self.labels["Episode"].config(text=f"Episode: {data['episode']} / {config.NUM_EPISODES}")
+        self.labels["Step"].config(text=f"Step: {data['step']} / {config.MAX_STEPS_PER_EPISODE}")
+        self.labels["Total Steps"].config(text=f"Total Steps: {data['total_steps']}")
+        self.labels["Ep. Reward"].config(text=f"Ep. Reward: {data['current_episode_reward']:.2f}")
+        avg_r = sum(data['avg_reward_history']) / len(data['avg_reward_history']) if data['avg_reward_history'] else 'N/A'
+        self.labels["Avg Reward (100)"].config(text=f"Avg Reward (100): {avg_r if isinstance(avg_r, str) else f'{avg_r:.2f}'}")
+        self.labels["Epsilon"].config(text=f"Epsilon: {data['epsilon']:.4f}")
+        q_str = ", ".join([f"{q:.2f}" for q in data['q_values']])
+        self.labels["Q-Values"].config(text=f"Q-Values: [{q_str}]")
+        action_str = "JUMP" if data['action'] == 1 else "IDLE"
+        self.labels["Action"].config(text=f"Action: {action_str} ({data['action']})")
+        self.labels["Loss"].config(text=f"Loss: {data['current_loss']:.4f}" if data['current_loss'] != 0 else "Loss: N/A")
+        avg_l = sum(data['avg_loss_history']) / len(data['avg_loss_history']) if data['avg_loss_history'] else 'N/A'
+        self.labels["Avg Loss (100)"].config(text=f"Avg Loss (100): {avg_l if isinstance(avg_l, str) else f'{avg_l:.4f}'}")
+        self.labels["FPS"].config(text=data.get("fps_info", "AI: 0 | GUI: 0"))
+        self.labels["Game Region"].config(text=data["game_region_info"])
+        self.status_label.config(text=data["status_text"])
+        
+        self.pause_button.config(text=f"RESUME ({config.PAUSE_RESUME_KEY.upper()})" if data["is_paused"] else f"PAUSE ({config.PAUSE_RESUME_KEY.upper()})")
+
+        self.gui_fps_counter += 1
+        current_time = time.perf_counter()
+        if current_time - self.last_gui_update_time >= 1.0:
+            actual_gui_fps = self.gui_fps_counter / (current_time - self.last_gui_update_time)
+            self.last_gui_update_time = current_time
+            self.gui_fps_counter = 0
+            with gui_data_lock: 
+                 current_ai_fps_info = gui_shared_data.get("fps_info", "AI: 0 | GUI: 0").split("|")[0].strip()
+                 gui_shared_data["fps_info"] = f"{current_ai_fps_info} | GUI: {actual_gui_fps:.1f}"
+        
+        if self.root and self.root.winfo_exists():
+            self.root.after(config.GUI_UPDATE_INTERVAL_MS, self.update_gui_info)
+
+def run_gui_in_thread():
+    global gui_tk_root
+    gui_tk_root = tk.Tk()
+    app_gui = AppGUI(gui_tk_root)
+    gui_tk_root.mainloop() 
+    logging.info("GUI thread has finished.")
+    if not stop_event.is_set(): 
+        stop_event.set() 
 
 
-def toggle_pause():
-    global bot_paused
-    bot_paused = not bot_paused
-    status = "PAUSED" if bot_paused else "RESUMED"
-    logging.info(f"Bot operation {status}.")
-
-def signal_exit():
-    global bot_running
-    bot_running = False
-    logging.info("Exit signal received. Shutting down...")
-
-def setup_hotkeys(config_manager: ConfigManager):
-    hotkey_config = config_manager.get_section("hotkeys")
-    pause_key = hotkey_config.get("pause_resume", "f8")
-    exit_key = hotkey_config.get("exit_bot", "f9")
-
+def on_key_press(key):
     try:
-        keyboard.add_hotkey(pause_key, toggle_pause)
-        keyboard.add_hotkey(exit_key, signal_exit)
-        logging.info(f"Hotkeys registered: Pause/Resume ({pause_key}), Exit ({exit_key})")
-    except Exception as e:
-        logging.error(f"Failed to register hotkeys: {e}. Try running with administrator privileges.")
+        char_key = key.char
+    except AttributeError:
+        char_key = None 
 
-
-
-class GDintBot:
-    def __init__(self):
-        self.config_manager = ConfigManager()
-        setup_logging(self.config_manager)
-        setup_hotkeys(self.config_manager)
-
-        self.capture = ScreenCapture(self.config_manager)
-        self.controller = GameController(self.config_manager)
-        self.visualizer = Visualizer(self.config_manager)
-        
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        logging.info(f"Using device: {self.device}")
-        
-        global model_config 
-        model_config = self.config_manager.get_section("model")
-        self.agent = DQNAgent(model_config, self.device)
-        
-        self.replay_buffer = ReplayBuffer(
-            capacity=model_config["replay_buffer_size"],
-            frame_stack_size=model_config["frame_stack"],
-            image_dims=(model_config["image_height"], model_config["image_width"])
-        )
-        
-        self.frame_stack_size = model_config["frame_stack"]
-        self.img_h = model_config["image_height"]
-        self.img_w = model_config["image_width"]
-        
-        self.preprocessed_frame_buffer = collections.deque(maxlen=self.frame_stack_size)
-
-        self.episode_count = 0
-        self.total_steps_session = 0 
-        self.loop_start_time = time.time()
-        self.frames_processed_for_fps = 0
-
-
-    def _get_current_state_stack(self) -> Optional[np.ndarray]:
-        if len(self.preprocessed_frame_buffer) < self.frame_stack_size:
+    if char_key == config.PAUSE_RESUME_KEY:
+        if gui_tk_root and gui_tk_root.winfo_exists(): 
+            app_instance = None 
             
             
-            padded_stack = []
-            num_missing = self.frame_stack_size - len(self.preprocessed_frame_buffer)
-            for _ in range(num_missing):
-                padded_stack.append(np.zeros((self.img_h, self.img_w), dtype=np.uint8))
-            for frame in self.preprocessed_frame_buffer:
-                padded_stack.append(frame)
-            return np.stack(padded_stack, axis=0) if padded_stack else None
-        return np.stack(list(self.preprocessed_frame_buffer), axis=0)
-
-    def _add_frame_to_buffer(self, processed_frame: np.ndarray):
-        self.preprocessed_frame_buffer.append(processed_frame)
-
-    def _reset_episode_state(self):
-        self.preprocessed_frame_buffer.clear()
-        
-        logging.info(f"Episode {self.episode_count} ended. Resetting frame buffer.")
-
-
-    def run(self):
-        global bot_running, bot_paused
-
-        if not self.capture.find_and_focus_window():
-            logging.error("Failed to initialize game window. Exiting.")
-            return
-
-        last_frame_time = time.time()
-        
-        current_episode_reward = 0.0
-        current_episode_steps = 0
-        
-        
-        for _ in range(self.frame_stack_size): 
-            initial_raw_frame = self.capture.get_frame()
-            if initial_raw_frame is None:
-                logging.error("Could not get initial frames. Exiting.")
-                bot_running = False 
-                break
-            processed = DQNAgent.preprocess_frame(initial_raw_frame, self.img_h, self.img_w)
-            self._add_frame_to_buffer(processed)
-        
-        if not bot_running: 
-             self.cleanup()
-             return
-
-        while bot_running:
-            if bot_paused:
-                time.sleep(0.1) 
-                
-                last_frame_time = time.time() 
-                self.loop_start_time = time.time()
-                self.frames_processed_for_fps = 0
-                continue
-
-            
-            loop_delta = time.time() - self.loop_start_time
-            if loop_delta >= 1.0: 
-                capture_fps = self.frames_processed_for_fps / loop_delta
-                self.visualizer.display_stats({
-                    "Capture FPS": capture_fps,
-                    "Episode": self.episode_count,
-                    "Session Steps": self.total_steps_session,
-                    "Agent Epsilon": self.agent.epsilon,
-                    "Replay Buffer Size": len(self.replay_buffer)
-                })
-                self.loop_start_time = time.time()
-                self.frames_processed_for_fps = 0
-            
-            time_since_last_frame = time.time() - last_frame_time
-            if time_since_last_frame < self.capture.frame_interval:
-                time.sleep(self.capture.frame_interval - time_since_last_frame)
-            last_frame_time = time.time()
-
-            
-            raw_frame = self.capture.get_frame()
-            if raw_frame is None:
-                logging.warning("Failed to capture frame, skipping step.")
-                time.sleep(0.5) 
-                if not self.capture.find_and_focus_window(): 
-                    logging.error("Lost game window and cannot re-acquire. Exiting.")
-                    bot_running = False
-                continue
-            
-            self.frames_processed_for_fps += 1
-
-            
-            processed_frame = DQNAgent.preprocess_frame(raw_frame, self.img_h, self.img_w)
-            
-            
-            current_state_stack = self._get_current_state_stack() 
-            if current_state_stack is None: 
-                logging.warning("Current state stack is None, skipping.")
-                self._add_frame_to_buffer(processed_frame) 
-                continue
-                
-            self._add_frame_to_buffer(processed_frame) 
-
-            
-            next_state_stack = self._get_current_state_stack() 
-            if next_state_stack is None: 
-                 logging.warning("Next state stack is None, this is an error.")
-                 
-                 
-                 
-                 pass
-
-
-            
-            action = self.agent.select_action(current_state_stack)
-
-            
-            if action == 1: 
-                self.controller.jump()
-            else: 
-                self.controller.no_op()
-
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            is_dead = self.controller.is_player_dead(raw_frame) 
-            reward = 0.0
-            done_flag = False
-
-            if is_dead:
-                reward = -100.0 
-                done_flag = True
-                logging.info(f"Player died. Episode Reward: {current_episode_reward + reward}")
-                self.controller.restart_level() 
-                time.sleep(self.controller.restart_cooldown_s) 
+            if pause_event.is_set():
+                pause_event.clear()
+                with gui_data_lock: gui_shared_data["is_paused"] = False
+                logging.info("AI Resumed via keyboard.")
             else:
-                reward = 0.1 
-            
-            current_episode_reward += reward
-            current_episode_steps += 1
-            self.total_steps_session += 1
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            if hasattr(self, 'last_step_data_for_buffer') and self.last_step_data_for_buffer:
-                prev_processed_state, prev_action, prev_reward, prev_done = self.last_step_data_for_buffer
-                
-                self.replay_buffer.push(prev_processed_state, prev_action, prev_reward, processed_frame, prev_done)
-
-            
-            self.last_step_data_for_buffer = (processed_frame, action, reward, done_flag)
+                pause_event.set()
+                with gui_data_lock: gui_shared_data["is_paused"] = True
+                logging.info("AI Paused via keyboard.")
+        else: 
+            if pause_event.is_set(): pause_event.clear(); logging.info("AI Resumed (no GUI).")
+            else: pause_event.set(); logging.info("AI Paused (no GUI).")
 
 
-            
-            if self.total_steps_session % model_config.get("train_frequency_steps", 4) == 0: 
-                loss = self.agent.train_step(self.replay_buffer, model_config["batch_size"])
-                if loss is not None and self.episode_count > 0 : 
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    if not hasattr(self, 'current_episode_losses'):
-                        self.current_episode_losses = []
-                    self.current_episode_losses.append(loss)
 
-
-            
-            if self.visualizer.show_ai_vision:
-                
-                self.visualizer.display_ai_vision(raw_frame, activation_map=None)
-            
-            if cv2.waitKey(1) & 0xFF == ord('q'): 
-                if self.visualizer.show_ai_vision: 
-                     bot_running = False
-
-
-            
-            if done_flag:
-                self.episode_count += 1
-                avg_loss_this_episode = np.mean(self.current_episode_losses) if hasattr(self, 'current_episode_losses') and self.current_episode_losses else None
-                self.visualizer.update_training_graph(self.episode_count, avg_loss_this_episode, current_episode_reward)
-                
-                logging.info(f"Episode {self.episode_count} finished. Steps: {current_episode_steps}, Total Reward: {current_episode_reward:.2f}, Avg Loss: {avg_loss_this_episode if avg_loss_this_episode else 'N/A'}")
-                
-                
-                current_episode_reward = 0.0
-                current_episode_steps = 0
-                if hasattr(self, 'current_episode_losses'): self.current_episode_losses.clear()
-                self._reset_episode_state() 
-                
-                
-                for _ in range(self.frame_stack_size):
-                    initial_raw_frame_ep = self.capture.get_frame()
-                    if initial_raw_frame_ep is None:
-                        logging.error("Could not get initial frames for new episode. Exiting.")
-                        bot_running = False; break
-                    processed_ep = DQNAgent.preprocess_frame(initial_raw_frame_ep, self.img_h, self.img_w)
-                    self._add_frame_to_buffer(processed_ep)
-                if not bot_running: break 
-
-                
-                if hasattr(self, 'last_step_data_for_buffer'):
-                    del self.last_step_data_for_buffer
-
-
-                
-                if self.episode_count % model_config.get("save_model_frequency_episodes", 10) == 0:
-                    self.agent.save_model()
-            
-            if not bot_running: 
-                break
-
-
-        self.cleanup()
-
-    def cleanup(self):
-        logging.info("Cleaning up and exiting...")
-        self.agent.save_model() 
-        self.visualizer.close()
-        if self.capture.sct:
-            self.capture.sct.close()
-        cv2.destroyAllWindows()
-        keyboard.unhook_all() 
-        logging.info("GDint bot stopped.")
-
-if __name__ == "__main__":
-    gd_bot = GDintBot()
+def plot_training_data(rewards, losses, durations, path=config.PLOT_SAVE_PATH):
     try:
-        gd_bot.run()
+        import matplotlib.pyplot as plt
+        import pandas as pd
+        plt.style.use('seaborn-v0_8-darkgrid')
+        fig, axs = plt.subplots(3, 1, figsize=(12, 15), sharex=True)
+        
+        rewards_s = pd.Series(rewards)
+        axs[0].plot(rewards_s, label='Ep. Reward', alpha=0.6)
+        axs[0].plot(rewards_s.rolling(100, min_periods=1).mean(), label='Avg Reward (100ep)', color='red')
+        axs[0].set_ylabel('Total Reward'); axs[0].legend(); axs[0].set_title('Rewards')
+
+        valid_losses = [l for l in losses if l is not None]
+        if valid_losses:
+            losses_s = pd.Series(valid_losses)
+            axs[1].plot(losses_s, label='Avg. Loss', alpha=0.6)
+            axs[1].plot(losses_s.rolling(100, min_periods=1).mean(), label='Avg Loss (100ep)', color='green')
+        axs[1].set_ylabel('Loss'); axs[1].legend(); axs[1].set_title('Loss')
+        
+        durations_s = pd.Series(durations)
+        axs[2].plot(durations_s, label='Ep. Duration', alpha=0.6)
+        axs[2].plot(durations_s.rolling(100, min_periods=1).mean(), label='Avg Duration (100ep)', color='purple')
+        axs[2].set_xlabel('Episode'); axs[2].set_ylabel('Steps'); axs[2].legend(); axs[2].set_title('Durations')
+
+        fig.suptitle(f'{config.PROJECT_NAME} Training Progress', fontsize=16)
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        if path: plt.savefig(path); logging.info(f"Plots saved: {path}")
+        plt.close(fig) 
+    except ImportError: logging.warning("Matplotlib/Pandas not found. Skipping plots.")
+    except Exception as e: logging.error(f"Plotting error: {e}")
+
+
+def ai_training_main_loop():
+    global gui_shared_data
+    loop_start_time = time.perf_counter()
+    ai_frames_this_second = 0
+    last_ai_fps_update_time = loop_start_time
+
+    if config.ENABLE_GUI:
+        with gui_data_lock: gui_shared_data["status_text"] = "Initializing Environment & Agent..."
+    
+    env = GameEnvironment()
+    if env.monitor_region is None and config.FALLBACK_GAME_REGION is None:
+        logging.critical("FATAL: Game region could not be determined. Exiting AI thread.")
+        if config.ENABLE_GUI:
+            with gui_data_lock: gui_shared_data["status_text"] = "ERROR: Game region undefined."
+        stop_event.set()
+        return
+
+    agent = Agent(num_actions=config.NUM_ACTIONS, sample_env_for_shape=env)
+    agent.load_model()
+
+    all_ep_rewards, all_ep_avg_losses, all_ep_durations = [], [], []
+    ai_loop_delay = 1.0 / config.AI_FPS_LIMIT if config.AI_FPS_LIMIT > 0 else 0
+    total_step_counter_for_session = 0
+
+    try:
+        for i_episode in range(1, config.NUM_EPISODES + 1):
+            if stop_event.is_set(): break
+            
+            if pause_event.is_set():
+                logging.info("AI Training Paused...")
+                if config.ENABLE_GUI:
+                    with gui_data_lock: gui_shared_data["status_text"] = f"AI Paused (Press '{config.PAUSE_RESUME_KEY.upper()}' to resume)"
+                pause_event.wait() 
+                logging.info("AI Training Resumed.")
+                if config.ENABLE_GUI:
+                    with gui_data_lock: gui_shared_data["is_paused"] = False 
+
+            current_state_tensor, _ = env.reset()
+            current_episode_reward_val = 0.0
+            episode_loss_sum = 0.0
+            episode_opt_steps = 0
+            
+            if config.ENABLE_GUI:
+                with gui_data_lock:
+                    gui_shared_data["episode"] = i_episode
+                    gui_shared_data["current_episode_reward"] = 0.0
+                    gui_shared_data["status_text"] = f"Running Ep. {i_episode}..."
+
+            for t_step in range(1, config.MAX_STEPS_PER_EPISODE + 1):
+                if stop_event.is_set(): break
+                if pause_event.is_set(): 
+                    logging.info("AI Training Paused (mid-episode)...")
+                    if config.ENABLE_GUI:
+                         with gui_data_lock: gui_shared_data["status_text"] = f"AI Paused (Press '{config.PAUSE_RESUME_KEY.upper()}' to resume)"
+                    pause_event.wait()
+                    logging.info("AI Training Resumed (mid-episode).")
+                    if config.ENABLE_GUI:
+                        with gui_data_lock: gui_shared_data["is_paused"] = False
+                
+                step_process_start_time = time.perf_counter()
+                total_step_counter_for_session +=1
+                
+                action_tensor = agent.select_action(current_state_tensor)
+                next_state_tensor, reward_val, done, _ = env.step(action_tensor.item())
+                
+                
+                if config.REWARD_PROGRESS_FACTOR != 0 and not done:
+                    progress = t_step / config.MAX_STEPS_PER_EPISODE
+                    reward_val += config.REWARD_PROGRESS_FACTOR * progress
+
+                current_episode_reward_val += reward_val
+                
+                agent.memory.push(current_state_tensor, action_tensor,
+                                  None if done else next_state_tensor,
+                                  torch.tensor([reward_val], device=config.DEVICE, dtype=torch.float),
+                                  torch.tensor([done], device=config.DEVICE, dtype=torch.bool))
+                current_state_tensor = next_state_tensor
+                
+                loss_item = agent.optimize_model()
+                if loss_item is not None:
+                    episode_loss_sum += loss_item
+                    episode_opt_steps += 1
+
+                if config.ENABLE_GUI:
+                    with gui_data_lock:
+                        gui_shared_data["step"] = t_step
+                        gui_shared_data["total_steps"] = agent.total_steps_done_in_training 
+                        gui_shared_data["current_episode_reward"] = current_episode_reward_val
+
+                if ai_loop_delay > 0:
+                    elapsed = time.perf_counter() - step_process_start_time
+                    sleep_duration = ai_loop_delay - elapsed
+                    if sleep_duration > 0: time.sleep(sleep_duration)
+                
+                ai_frames_this_second +=1
+                current_time_fps = time.perf_counter()
+                if current_time_fps - last_ai_fps_update_time >= 1.0:
+                    actual_ai_fps = ai_frames_this_second / (current_time_fps - last_ai_fps_update_time)
+                    last_ai_fps_update_time = current_time_fps
+                    ai_frames_this_second = 0
+                    if config.ENABLE_GUI:
+                        with gui_data_lock:
+                            current_gui_fps_info = gui_shared_data.get("fps_info", "AI: 0 | GUI: 0").split("|")[-1].strip()
+                            gui_shared_data["fps_info"] = f"AI: {actual_ai_fps:.1f} | {current_gui_fps_info}"
+
+                if done: break
+            
+            
+            if stop_event.is_set(): break
+            all_ep_rewards.append(current_episode_reward_val)
+            all_ep_durations.append(t_step)
+            avg_loss_this_ep = episode_loss_sum / episode_opt_steps if episode_opt_steps > 0 else None
+            all_ep_avg_losses.append(avg_loss_this_ep)
+
+            if config.ENABLE_GUI:
+                with gui_data_lock:
+                    gui_shared_data["avg_reward_history"].append(current_episode_reward_val)
+                    if avg_loss_this_ep is not None: gui_shared_data["avg_loss_history"].append(avg_loss_this_ep)
+                    gui_shared_data["status_text"] = f"Ep {i_episode} Done. Reward: {current_episode_reward_val:.2f}"
+
+            logging.info(f"Ep {i_episode}: Steps={t_step}, Reward={current_episode_reward_val:.2f}, AvgLoss={avg_loss_this_ep if avg_loss_this_ep is not None else 'N/A'}, Epsilon={gui_shared_data['epsilon']:.4f}, Mem={len(agent.memory)}")
+            
+            if i_episode % config.TARGET_UPDATE_FREQ_EPISODES == 0:
+                agent.update_target_net()
+                logging.info("Target network updated.")
+            if i_episode % config.SAVE_MODEL_EVERY_N_EPISODES == 0:
+                 agent.save_model()
+                 if all_ep_rewards: plot_training_data(all_ep_rewards, all_ep_avg_losses, all_ep_durations)
+        
+    except KeyboardInterrupt: logging.info("Ctrl+C detected in AI loop. Stopping.")
+    except Exception as e: logging.error(f"TRAINING LOOP CRASH: {e}", exc_info=True)
+    finally:
+        stop_event.set()
+        logging.info("AI Training Loop Finalizing...")
+        agent.save_model(f"{config.PROJECT_NAME.lower()}_final_model.pth")
+        if all_ep_rewards: plot_training_data(all_ep_rewards, all_ep_avg_losses, all_ep_durations, f"{config.PROJECT_NAME.lower()}_final_plots.png")
+        
+        if config.ENABLE_GUI:
+            with gui_data_lock: gui_shared_data["status_text"] = "AI Training Finished. You can close GUI."
+        logging.info("AI Training Loop Finished.")
+        
+        global game_region_display_window
+        if game_region_display_window:
+            game_region_display_window.destroy()
+            game_region_display_window = None
+
+
+if __name__ == '__main__':
+    logging.info(f"--- {config.PROJECT_NAME} AI Starting --- PID: {os.getpid()}")
+    
+    
+    key_listener = pynput_keyboard.Listener(on_press=on_key_press)
+    key_listener.start()
+    logging.info(f"Keyboard listener started for '{config.PAUSE_RESUME_KEY}' key.")
+
+    for i in range(2, 0, -1): 
+        logging.info(f"Focus game window... Starting in {i}s")
+        time.sleep(1)
+
+    if config.ENABLE_GUI:
+        gui_thread = threading.Thread(target=run_gui_in_thread, daemon=True)
+        gui_thread.start()
+        logging.info("GUI thread initiated.")
+        time.sleep(0.5) 
+
+    ai_thread = threading.Thread(target=ai_training_main_loop, daemon=True)
+    ai_thread.start()
+    logging.info("AI training thread initiated.")
+
+    
+    try:
+        while ai_thread.is_alive() and not stop_event.is_set():
+            time.sleep(0.5) 
+            
+            if config.ENABLE_GUI and gui_tk_root is None and gui_thread.is_alive():
+                logging.info("GUI window was closed. Signalling AI thread to stop.")
+                stop_event.set() 
+                break 
     except KeyboardInterrupt:
-        logging.info("Keyboard interrupt received. Shutting down.")
-        gd_bot.cleanup()
-    except Exception as e:
-        logging.critical(f"An unhandled exception occurred: {e}", exc_info=True)
-        gd_bot.cleanup()
+        logging.info("Ctrl+C in main thread. Initiating shutdown.")
+        stop_event.set()
+    
+    logging.info("Waiting for AI thread to complete...")
+    if pause_event.is_set(): pause_event.clear() 
+    ai_thread.join(timeout=10)
+    if ai_thread.is_alive():
+        logging.warning("AI thread did not stop gracefully after 10s. Forcing.")
+
+    if config.ENABLE_GUI and gui_thread.is_alive():
+        logging.info("Waiting for GUI thread to complete...")
+        if gui_tk_root and gui_tk_root.winfo_exists(): 
+             gui_tk_root.destroy()
+        gui_thread.join(timeout=5)
+    
+    key_listener.stop()
+    logging.info("Keyboard listener stopped.")
+    logging.info(f"--- {config.PROJECT_NAME} AI Shutdown Complete ---")
