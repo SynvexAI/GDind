@@ -1,10 +1,11 @@
-2025-05-28 12:37:59,957 - INFO - GDint:71 - Logging for GDint setup. Level: INFO, Device: cuda
-2025-05-28 12:37:59,958 - INFO - GDint:1141 - --- GDint AI Main Script Starting --- PID: 11056
-2025-05-28 12:37:59,969 - INFO - GDint:1146 - Keyboard listener started. Press 'p' to Pause/Resume AI.
-2025-05-28 12:37:59,969 - INFO - GDint:1150 - Please focus the Geometry Dash game window... Starting AI in 2 seconds.
-2025-05-28 12:38:00,970 - INFO - GDint:1150 - Please focus the Geometry Dash game window... Starting AI in 1 seconds.
-2025-05-28 12:38:02,023 - INFO - GDint:1158 - GUI thread has been initiated.
-2025-05-28 12:38:02,526 - INFO - GDint:1164 - AI training thread has been initiated.
-2025-05-28 12:38:03,027 - INFO - GDint:1179 - Main thread: Waiting for AI training thread to complete...
-2025-05-28 12:38:03,027 - INFO - GDint:1187 - Main thread: Waiting for GUI thread to complete...
-2025-05-28 12:38:03,054 - INFO - GDint:885 - GUI thread has finished execution.
+2025-05-28 12:41:06,740 - INFO - GDint:71 - Logging for GDint setup. Level: INFO, Device: cuda
+2025-05-28 12:41:06,740 - INFO - GDint:1165 - --- GDint AI Main Script Starting --- PID: 23188
+2025-05-28 12:41:06,748 - INFO - GDint:1170 - Keyboard listener started. Press 'p' to Pause/Resume AI.
+2025-05-28 12:41:06,748 - INFO - GDint:1174 - Please focus the Geometry Dash game window... Starting AI in 2 seconds.
+2025-05-28 12:41:07,748 - INFO - GDint:1174 - Please focus the Geometry Dash game window... Starting AI in 1 seconds.
+2025-05-28 12:41:08,797 - INFO - GDint:1182 - GUI thread has been initiated.
+2025-05-28 12:41:09,299 - INFO - GDint:1188 - AI training thread has been initiated.
+2025-05-28 12:41:09,303 - ERROR - GDint:266 - Error in _update_and_focus_game_window: 'GameEnvironment' object has no attribute 'monitor_region'
+2025-05-28 12:41:09,800 - INFO - GDint:1203 - Main thread: Waiting for AI training thread to complete...
+2025-05-28 12:41:09,800 - INFO - GDint:1211 - Main thread: Waiting for GUI thread to complete...
+2025-05-28 12:41:09,823 - INFO - GDint:909 - GUI thread has finished execution.

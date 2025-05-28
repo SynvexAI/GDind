@@ -126,6 +126,30 @@ class GameEnvironment:
     def __init__(self):
         self.sct = mss.mss()
         self.mouse = MouseController()
+        self.game_window_handle = None
+        
+        self.last_window_check_time = 0
+
+        self.monitor_region = self._update_and_focus_game_window(force_check=True)
+
+        if self.monitor_region is None or self.monitor_region.get('width', 0) == 0:
+            logging.error(f"Could not find or get valid dimensions for game window '{config.WINDOW_TITLE_SUBSTRING}'. Using fallback or first monitor.")
+            self.monitor_region = config.FALLBACK_GAME_REGION if config.FALLBACK_GAME_REGION else self.sct.monitors[1]
+        
+        self._update_gui_game_region_info()
+        logging.info(f"GameEnvironment Initialized. Screen region set to: {self.monitor_region}")
+        
+        self.game_over_screen_tpl = self._load_template(config.GAME_OVER_SCREEN_TEMPLATE_PATH, "Game Over Screen")
+        self.player_death_effect_tpl = self._load_template(config.PLAYER_DEATH_EFFECT_TEMPLATE_PATH, "Player Death Effect")
+        self.spike_tpl = self._load_template(config.SPIKE_TEMPLATE_PATH, "Spike")
+        
+        self.stacked_frames = deque(maxlen=config.NUM_FRAMES_STACKED)
+        
+        if config.SHOW_GAME_REGION_OUTLINE:
+            self._create_region_display_window()
+
+        self.sct = mss.mss()
+        self.mouse = MouseController()
         self.game_window_handle = None 
         self.monitor_region = self._update_and_focus_game_window() 
 
