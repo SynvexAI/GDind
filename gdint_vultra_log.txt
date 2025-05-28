@@ -1,0 +1,12 @@
+2025-05-28 13:04:01,854 - INFO - GDint:58 - Logging for GDint_vUltra setup. Level: INFO, Device: cuda
+2025-05-28 13:04:01,855 - INFO - GDint:836 - --- GDint_vUltra AI Starting --- PID: 23432
+2025-05-28 13:04:01,873 - INFO - GDint:841 - Keyboard listener started for 'p' key.
+2025-05-28 13:04:01,873 - INFO - GDint:844 - Focus game window... Starting in 2s
+2025-05-28 13:04:02,874 - INFO - GDint:844 - Focus game window... Starting in 1s
+2025-05-28 13:04:03,922 - INFO - GDint:850 - GUI thread initiated.
+2025-05-28 13:04:04,425 - INFO - GDint:855 - AI training thread initiated.
+2025-05-28 13:04:04,429 - INFO - GDint:206 - Focused window 'Geometry Dash' via pywinauto.
+2025-05-28 13:04:04,629 - INFO - GDint:119 - GameEnvironment: Screen region set to {'top': 449, 'left': 974, 'width': 915, 'height': 545, 'monitor': 1}
+2025-05-28 13:04:04,927 - INFO - GDint:870 - Waiting for AI thread to complete...
+2025-05-28 13:04:04,927 - INFO - GDint:877 - Waiting for GUI thread to complete...
+2025-05-28 13:04:04,949 - INFO - GDint:626 - GUI thread has finished.
