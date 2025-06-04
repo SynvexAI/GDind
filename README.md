@@ -22,17 +22,10 @@
 ## 🖼️ Visual Evidence (Proof We're Not Just Making This Up)
 
 <p align="center">
-  <img src="img/2.png" alt="GDint Dashboard" width="800"/>
-  <br>
-  <em>The GDint Dashboard: Where you can watch the AI's dreams (and your GPU) burn. Displays AI vision, raw capture, vital stats, and the all-important PAUSE button.</em>
-</p>
-
-<p align="center">
-  <img src="img/1.png" alt="Geometry Dash Gameplay" width="700"/>
+  <img src="img/1.png" alt="GDint Dashboard" width="800"/>
   <br>
   <em>A typical Tuesday for GDint: Facing an existential crisis in the form of a spike. This is what the AI "sees."</em>
 </p>
-
 ---
 
 ## 🤔 Why Subject an AI to Geometry Dash?
