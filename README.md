@@ -1,5 +1,7 @@
 # GDint: Teaching a Digital Cube to Suffer... For Science! 🎮🤖
 
+# Look at this: https://youtu.be/SU5lVPNFXbE?si=Okzw2AJBlHnDUWkJ
+
 **GDint** is a Python-powered endeavor to see if we can't coax an Artificial Intelligence (specifically, a Deep Q-Network agent) into navigating the perilous, rhythm-fueled, and often rage-inducing levels of Geometry Dash. It's part screen-capturing wizardry, part image-processing gymnastics, part PyTorch-fueled neural networking, and entirely a testament to human (or AI) perseverance. Features a snazzy GUI, because even AI overlords appreciate a good dashboard.
 
 *"It's not a bug, it's an undocumented training feature." - Every AI Developer, probably.*
